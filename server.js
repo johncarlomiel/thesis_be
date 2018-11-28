@@ -21,6 +21,7 @@ app.post("/api/register", (req, res) => {
     pool.getConnection((err, connection) => {
         connection.query(`SELECT * FROM users WHERE username="${req.body.username}"`, (error, results, fields) => {
             if (results.length == 0) {
+                //Insert it
                 connection.query("INSERT INTO users SET ?", {
                     username: req.body.username, password: req.body.password, name: req.body.name
                 },
@@ -28,13 +29,32 @@ app.post("/api/register", (req, res) => {
                         if (error) {
                             throw error;
                         }
+                        console.log(results)
+                        //Insert default value in problems
+                        connection.query("INSERT INTO problems SET ?", {
+                            user_id: results.insertId
+                        }, (error, results, fields) => {
+
+                        });
+
+
+
                         res.status(200).json({ message: "Register success", status: 200 })
                     });
+
+
+
+
             } else {
                 res.status(403).json({ message: "Username already taken" })
 
             }
         });
+
+
+
+
+
 
 
     });
@@ -100,6 +120,69 @@ app.post("/api/submitResult", verifyToken, (req, res) => {
 app.get("/api/checkSession", verifyToken, (req, res) => {
     res.status(200).json(req.userData);
 });
+
+app.get('/api/getInfo', verifyToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        let tablenames = "name, course, age, gender, religion, place_birth, addr, cp_num, mother_name, mother_religion, mother_job, father_name, father_religion, father_job, not_livingwith_parents, study_status, transpo, allowed_night, study_helper, hobby, have_friends";
+        if (err) throw err;
+        let query = connection.query(`SELECT ${tablenames} FROM users WHERE id=${req.userData.id}`, (err, results, fields) => {
+            if (err) throw err;
+            res.status(200).json(results[0]);
+
+        });
+        console.log(query.sql)
+    })
+});
+
+
+app.put('/api/updateInfo', verifyToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let data = Object.values(req.body);
+        let sql = `UPDATE users SET name = ?, course = ?, age = ?, gender = ?, religion = ?, place_birth = ?, addr = ?, cp_num = ?, mother_name = ?, mother_religion = ?, mother_job = ?,
+        father_name = ?, father_religion = ?, father_job = ?, not_livingwith_parents = ?, study_status = ?, transpo = ?, allowed_night = ?, study_helper = ?, hobby = ?, have_friends = ? WHERE id = ?`;
+
+        data.push(req.userData.id)
+        let qwe = connection.query(sql, data, (err, results, fields) => {
+            if (err) {
+                res.status(400).json({ err })
+                throw err;
+            }
+
+            res.status(200).json({ message: "Updated" });
+        });
+
+
+    })
+
+});
+
+app.put('/api/updateProblems', verifyToken, (req, res) => {
+
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let holder = req.body.data;
+        let data = Array.apply(null, Array());
+        holder.forEach(element => {
+            data.push(element.value);
+        });
+        let sql = `UPDATE problems SET physio = ?, financial = ?, soc_recreat = ?, courtship = ?, soc_physio = ?, per_physio = ?, morals = ?, teach_procedure = ?, family = ?, education = ?, adjustments = ? WHERE user_id = ?`;
+        data.push(req.userData.id)
+        let query = connection.query(sql, data, (err, results, fields) => {
+            if (err) {
+                res.status(400).json({ err })
+                throw err;
+            }
+            res.status(200).json({ message: "updated" });
+        })
+        console.log(query.sql)
+    });
+
+
+});
+
+
+
 
 function verifyToken(req, res, next) {
     //Get auth header value
