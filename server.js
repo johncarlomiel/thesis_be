@@ -130,7 +130,33 @@ app.get('/api/getInfo', verifyToken, (req, res) => {
             res.status(200).json(results[0]);
 
         });
+    })
+});
+
+app.get('/api/getMoreInfo', verifyToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        let tablenames = "troubling_problems, someone_to_talk, happiest_expi, downful_expi, ambition, want_to_change";
+        if (err) throw err;
+        let query = connection.query(`SELECT ${tablenames} FROM users WHERE id=${req.userData.id}`, (err, results, fields) => {
+            if (err) throw err;
+            res.status(200).json(results[0]);
+
+        });
+    })
+});
+
+app.get('/api/getProblems', verifyToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let tablenames = "adjustments, courtship, education, family, financial, morals, per_physio, physio, soc_physio, soc_recreat, teach_procedure";
+
+
+        let query = connection.query(`SELECT ${tablenames} FROM problems WHERE user_id = ${req.userData.id}`, (error, results, fields) => {
+            if (error) throw error;
+            res.status(200).json(results[0])
+        });
         console.log(query.sql)
+
     })
 });
 
@@ -156,6 +182,27 @@ app.put('/api/updateInfo', verifyToken, (req, res) => {
     })
 
 });
+
+app.put('/api/updateMoreInfo', verifyToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let data = Object.values(req.body);
+        let sql = `UPDATE users SET troubling_problems = ?, someone_to_talk = ?, happiest_expi = ?, downful_expi = ?, ambition = ?, want_to_change = ? WHERE id = ?`
+        data.push(req.userData.id)
+
+        let query = connection.query(sql, data, (error, results, fields) => {
+            if (error) {
+                res.status(400).json({ message: "sql error" });
+                throw error;
+            }
+            res.status(200).json({ message: "Sucess" })
+        });
+        console.log(query.sql)
+
+    });
+
+});
+
 
 app.put('/api/updateProblems', verifyToken, (req, res) => {
 
@@ -210,27 +257,41 @@ function verifyToken(req, res, next) {
     }
 }
 
-app.get('/api/getMyCode', verifyToken, (req, res) => {
-    console.log(req.userData)
+app.get('/api/completeTest', verifyToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if(err) throw err;
+        let query = connection.query(`SELECT code FROM user_code WHERE user_id=${req.userData.id}`, (error, results, fields) => {
+            if(error) throw error;
+            
+        })
+    })
+})
 
+app.get('/api/getMyCode', verifyToken, (req, res) => {
+
+    let holder = [];
     function getCodes(callback) {
         pool.getConnection((err, connection) => {
             if (err) throw err;
-            let holder = [];
+
 
             const query = connection.query(`SELECT code FROM user_code WHERE user_id=${req.userData.id}`, (error, results, fields) => {
                 if (error) throw error;
-
-                results.forEach((element) => {
+                console.log(results.length)
+                results.forEach((element, index) => {
                     const query = connection.query('SELECT * from `code` WHERE `code` = ?', [element.code], (error, results, fields) => {
                         if (error) throw error;
                         holder.push({
                             name: element.code,
                             result: results
                         })
+                        console.log(index)
+                        console.log(query.sql)
                     })
 
                 });
+
+
 
                 setTimeout(() => callback(holder), 1000)
 
@@ -252,6 +313,7 @@ app.get('/api/getMyCode', verifyToken, (req, res) => {
 
     getCodes((data) => {
         res.status(200).json(data)
+        console.log(data)
     })
 
 });
