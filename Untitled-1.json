@@ -1,0 +1,98 @@
+test1{
+    "year": "1st",
+    "course": "BSCS",
+    "gender": "male",
+    "study_status": "very good"
+    "problems": [
+        "often have headaches",
+        "trouble with eyes",
+        "having no regular allowance",
+        "Financial dependance on others",
+        "smoking",
+        "drinking liquor",
+        "computer addict",
+        "not sure about proper sex behavior",
+        "thinking too much sex"
+    ]
+}
+    
+    test2{
+    "year": "2nd",
+    "course": "ACT",
+    "gender": "female",
+    "study_status": "very good",
+    "problems": [
+        "often have headaches",
+        "trouble with eyes",
+        "can't hear well",
+        "parents working too hard",
+        "smoking",
+        "drinking liquor"
+            "not sure about proper sex behavior",
+        "thinking too much sex",
+        "get hurt easily",
+        "nobody to share my problem",
+        "lazy",
+        "being nervous"
+    ]
+}
+
+test3 {
+    "year": "4th",
+    "course": "bsit",
+    "gender": "female",
+    "study_status": "not so good"
+    "problems": [
+        "being in love",
+        "wondering if ill get married",
+        "problems with gf/bf",
+        "cannot get along with other people",
+        "having friends with negative or bad influence",
+        "being the subject of teasing",
+        "having low self esteem",
+        "difficulty setting my priorities",
+        "having bad attitudes or habits",
+        "losing my temper",
+        "not living with parents"
+    ]
+}
+
+test4 {
+    "year": "1st",
+    "course": "mpa",
+    "gender": "male",
+    "study_status": "not so good",
+    "problems": [
+        "often have headaches",
+        "can't hear well",
+        "being in love",
+        "wondering if ill get married",
+        "problems with gf/bf",
+        "having friends with negative or bad influence",
+        "being the subject of teasing",
+        "having low self esteem",
+    ]
+}
+test5 {
+    "year": "3rd",
+    "course": "bscs",
+    "gender": "male",
+    "study_status": "very good",
+    "problem": [
+        "often have headaches",
+        "can't hear well",
+        "Having no regular allowance",
+        "financial dependence on others",
+        "parents working too hard",
+        "smoking",
+        "drinking liquor"
+        "being in love",
+        "wondering if ill get married",
+        "problems with gf/bf",
+        "losing my temper",
+        "teachers hard to understand",
+        "family quarrels",
+        "death in the family",
+        "problem about mother"
+    ]
+}

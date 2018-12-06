@@ -31,7 +31,7 @@ app.post("/api/register", (req, res) => {
                         }
                         console.log(results)
                         //Insert default value in problems
-                        connection.query("INSERT INTO problems SET ?", {
+                        connection.query("INSERT INTO reserve SET ?", {
                             user_id: results.insertId
                         }, (error, results, fields) => {
 
@@ -60,6 +60,15 @@ app.post("/api/register", (req, res) => {
     });
 
 });
+
+app.get('/api/checkSdsStatus', verifyToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let query = connection.query(`SELECT * FROM user_code WHERE user_id=${req.userData.id}`, (error, results, fields) => {
+            res.status(200).json(results)
+        })
+    });
+})
 
 app.post("/api/login", (req, res) => {
 
@@ -102,14 +111,23 @@ app.post("/api/submitResult", verifyToken, (req, res) => {
     pool.getConnection((err, connection) => {
         if (err) throw err;
 
-        let query = connection.query('INSERT INTO user_code (user_id, code) VALUES ?', [codes], (error, results, fields) => {
-            if (error) throw error;
+        let query = connection.query(`SELECT * FROM user_code WHERE user_id=${req.userData.id}`, (error, results, fields) => {
+            console.log(results.length)
+            if (results.length == 0) {
+                console.log("true")
+                let query = connection.query('INSERT INTO user_code (user_id, code) VALUES ?', [codes], (error, results, fields) => {
+                    if (error) throw error;
 
-            res.status(200).json({ hetto: "wer" })
+                    res.status(200).json({ hetto: "wer" })
 
 
 
-        });
+                });
+            } else {
+                res.status(200)
+            }
+
+        })
         console.log(query.sql)
     });
 
@@ -151,9 +169,9 @@ app.get('/api/getProblems', verifyToken, (req, res) => {
 
 
 
-        let query = connection.query(`SELECT * FROM user_problems INNER JOIN problems ON user_problems.problem_id = problems.id WHERE user_id = ${req.userData.id} AND answer=1`, (error, results, fields) => {
+        let query = connection.query(`SELECT * FROM reserve WHERE user_id = ${req.userData.id}`, (error, results, fields) => {
             if (error) throw error;
-            res.status(200).json(results)
+            res.status(200).json(results[0])
         });
         console.log(query.sql)
 
@@ -206,54 +224,37 @@ app.put('/api/updateMoreInfo', verifyToken, (req, res) => {
 
 
 app.put('/api/updateProblems', verifyToken, (req, res) => {
-
     let holder = Array.apply(null, Array());
+    let fieldnameArr = Array.apply(null, Array());
+    let valuesArr = Array.apply(null, Array())
     req.body.data.forEach(element => {
-        element.value.forEach(element => {
+        element.questions.forEach(element => {
             holder.push(element)
+            fieldnameArr.push(element.fieldname + " = ?");
+            valuesArr.push(element.value)
         });
     });
-
     pool.getConnection((err, connection) => {
-
-        holder.forEach(element => {
-            let query = connection.query(`SELECT * FROM user_problems WHERE user_id=${req.userData.id} AND problem_id=${element.id}`, (error, results, fields) => {
-                if (error) throw error;
-                if (results.length == 0) {
-                    let tanga = connection.query("INSERT INTO user_problems SET ?", { user_id: req.userData.id, problem_id: element.id, answer: element.value }, (error, results, fields) => {
-                        if (error) throw error;
-                    });
-
-
-                } else {
-                    connection.query("UPDATE user_problems SET answer = ? WHERE user_id = ? AND problem_id = ?", [element.value, req.userData.id, element.id], (error, results, fields) => {
-                        if (error) throw error;
-
-                    });
-                }
-
-            });
-
-
-        });
-
-
-        res.status(200).json({ status: 200, message: "Success!" })
-    });
-
-});
-
-app.get("/api/getQuestions", (req, res) => {
-    pool.getConnection((err, connection) => {
-
-        let query = connection.query("SELECT * FROM problems", (error, results, fields) => {
+        if (err) throw err;
+        let query = connection.query(`UPDATE reserve SET ${fieldnameArr.toString()} WHERE user_id = ${req.userData.id}`, valuesArr, (error, results, fields) => {
             if (error) throw error;
-            res.status(200).json(results);
+            res.status(200).json({ status: 200, message: "Success!" })
 
-        })
-
-    })
+        });
+    });
 });
+
+// app.get("/api/getQuestions", (req, res) => {
+//     pool.getConnection((err, connection) => {
+
+//         let query = connection.query("SELECT * FROM problems", (error, results, fields) => {
+//             if (error) throw error;
+//             res.status(200).json(results);
+
+//         })
+
+//     })
+// });
 
 
 
@@ -400,9 +401,9 @@ app.get('/api/admin/getProblems', (req, res) => {
 
 
 
-        let query = connection.query(`SELECT * FROM user_problems INNER JOIN problems ON user_problems.problem_id = problems.id WHERE user_id = ${req.query.id} AND answer=1`, (error, results, fields) => {
+        let query = connection.query(`SELECT * FROM reserve WHERE user_id = ${req.query.id}`, (error, results, fields) => {
             if (error) throw error;
-            res.status(200).json(results)
+            res.status(200).json(results[0])
         });
         console.log(query.sql)
 
@@ -410,12 +411,12 @@ app.get('/api/admin/getProblems', (req, res) => {
 });
 
 
-app.post("/api/admin/graph", (req, res) => {
-    console.log(req.body)
+app.post("/api/admin/graph", async (req, res) => {
+
     let result = {
-        conditionMet: "",
-        notCondition: "",
-        allResult: ""
+        conditionMet: { value: 0, data: Array.apply(null, Array()), label: "Criteria and Problems" },
+        notCondition: { value: 0, data: Array.apply(null, Array()), label: "Only Criteria" },
+        allResult: { value: 0, data: Array.apply(null, Array()), label: "All Students" },
     }
 
     let criteria_holder = "";
@@ -439,42 +440,52 @@ app.post("/api/admin/graph", (req, res) => {
         notCriteriaMet += " AND "
         criteriaMet += ")"
         criteriaMet += " AND "
-
+        console.log("done first event")
     });
 
     req.body.value.forEach((element, index) => {
+        console.log("second start")
         notCriteriaMet += element + " = 0";
         criteriaMet += element + " = 1";
         if (index != req.body.value.length - 1) {
             criteriaMet += " AND "
             notCriteriaMet += " AND "
         }
-
+        console.log("second end")
     });
 
     pool.getConnection((err, connection) => {
+        console.log("third start")
         if (err) throw err;
         let query = connection.query(`SELECT * FROM users INNER JOIN reserve ON users.id = reserve.user_id WHERE ${criteriaMet}`, (error, results, fields) => {
 
             if (error) throw error;
+            result.conditionMet.value = results.length;
+            result.conditionMet.data = results;
+
+            let query = connection.query(`SELECT * FROM users INNER JOIN reserve ON users.id = reserve.user_id WHERE ${notCriteriaMet}`, (error, results, fields) => {
+
+                if (error) throw error;
+                result.notCondition.value = results.length;
+                result.notCondition.data = results;
+                let query = connection.query(`SELECT * FROM users`, (error, results, fields) => {
+                    if (error) throw error;
+                    result.allResult.value = results.length;
+                    result.allResult.data = results;
+
+                    res.status(200).json(result)
+                })
+
+            })
 
         })
 
-
+        console.log("third end")
     })
     //Get result 2
 
-    pool.getConnection((err, connection) => {
-        if (err) throw err;
-        let query = connection.query(`SELECT * FROM users INNER JOIN reserve ON users.id = reserve.user_id WHERE ${notCriteriaMet}`, (error, results, fields) => {
 
-            if (error) throw error;
-            console.log(results)
 
-        })
-        console.log(query.sql)
-
-    })
 
 
 
