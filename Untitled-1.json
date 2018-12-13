@@ -96,3 +96,174 @@ test5 {
         "problem about mother"
     ]
 }
+test6{
+    "year": "4th",
+    "course": "MAEd",
+    "gender": "male",
+    "study_status": "very good",
+    "problem": [
+        "don't get enougth sleep",
+        "Getting too tired easily",
+        "Parents working too hard",
+        "Thinking of leaving college to look for a job",
+        "Not using my time well",
+        "Too little time for myself",
+        "Thinking too much about sex"
+        "Being too jealous and envious to others",
+        "Sometimes wishing I were a boy/girl",
+        "Being in love",
+        "Wondering if I'll get married",
+        "Problems with boyfriend/girlfriend",
+        "Nobody to share my problems with",
+        "Being childish or immature",
+        "Cannot get along with other people",
+        "Having friends with negative or bad influences"
+        "Being the subject of teasing"
+        "Having memories of an unhappy childhood"
+        "Wishing I'd never been born"
+        "Being materialistic"
+        "Wanting to know and understand the Bible"
+        "Having bad attitudes or habits",
+        "Textbooks/lessons hard to understand"
+        "Difficulty using media based technology"
+        "Problems with my subject/s"
+        "Problem about father"
+        "Being treated like a child"
+        "Parents are strict"
+        "Parents expecting too much from me"
+        "Unable to express myself well in words"
+        "Wanting to drop from school"
+        "Losing enthusiasm with my studies"
+    ]
+    
+},
+test7{
+    "year": "4th",
+    "course": "BSCS",
+    "gender": "male",
+    "study_status": "good",
+    "problems":[
+        "Often have headaches",
+        "Trouble with my eyes",
+        "Can't hear well",
+        "Bothered by physically disability",
+        "Parents working too hard",
+        "Thinking of leaving college to look for a job",
+        "Being materialistic",
+        "Getting too dependent on electronic gadgets",
+        "Problem about mother",
+        "Problem about father",
+        "Parents having favorites in the family",
+        "Unable to express myself well in words",
+        "Losing enthusiasm with my studies",
+        "Hard to study in a boarding house",
+        "Part-time student part-time worker",
+    ]
+}
+test8{
+    "year": "4th",
+    "course": "BSCS",
+    "gender": "male",
+    "study_status": "good",
+    "problems":[
+        "Have trouble with my teeth",
+        "Don't get enougth sleep",
+        "Getting tired too easily",
+        "Not allowed to go out with someone I like",
+        "Too little chance to do what I want to",
+        "Feeling uncomfortable with other people",
+        "Too little time for myself",
+        "Drinking liquor",
+        "Sometimes wishing I were a boy/girl",
+        "Wondering if I'll get married",
+        "Problems with boyfriend/girlfriend",
+        "Parents having favorites in the family",
+        "Getting homesick",
+        "Parents are separated",
+        "Hard to study in a boarding house",
+        "Part-time student part-time worker",
+    ]
+}
+test9{
+    "year": "1st",
+    "course": "BPEd",
+    "gender": "female",
+    "study_status": "good",
+    "problems": [
+        "Often have headaches",
+        "Trouble with my eyes",
+        "Have trouble with my teeth",
+        "Don't get enougth sleep",
+        "Getting tired too easily",
+        "Not allowed to go out with someone I like",
+        "Too little chance to do what I want to",
+        "Feeling uncomfortable with other people",
+        "Too little time for myself",
+        "Drinking liquor",
+        "Sometimes wishing I were a boy/girl",
+        "Wondering if I'll get married",
+        "Problems with boyfriend/girlfriend",
+        "Get hurt easily",
+        "Nobody to share my problems with",
+        "Being childish or immature",
+        "Cannot get along with other people",
+        "Parents having favorites in the family",
+        "Getting homesick",
+        "Parents are separated",
+        "Hard to study in a boarding house",
+        "Part-time student part-time worker",
+    ]
+}
+
+test10{
+    "year": "3rd",
+    "course": "BSIT",
+    "gender": "male",
+    "study_status": "good",
+    "problems": [
+        "Often have headaches",
+        "Trouble with my eyes"
+        "Can't hear well"
+        "Have trouble with my teeth"
+        "Don't get enougth sleep"
+        "Getting tired too easily"
+        "Often get sick and not healthy"
+        "Bothered by physically disability"
+        "Having no regular allowance"
+        "Financial dependence on others"
+        "Not allowed to go out with someone I like"
+        "Too little chance to do what I want to"
+        "Feeling uncomfortable with other people"
+        "Too little time for myself"
+        "Drinking liquor"
+        "Sometimes wishing I were a boy/girl"
+        "Wondering if I'll get married"
+        "Problems with boyfriend/girlfriend"
+        "Get hurt easily"
+        "Nobody to share my problems with"
+        "Being childish or immature"
+        "Cannot get along with other people"
+        "Parents having favorites in the family"
+        "Parents are strict"
+        "Getting homesick"
+        "Parents are separated"
+        "Parents are separated"
+        "Unable to express myself well in words"
+        "Wanting to drop from school"
+        "Losing enthusiasm with my studies"
+        "Having trouble with school personnel"
+        "Hard to study in a boarding house"
+        "Part-time student part-time worker"
+    ]
+}
+
+test11{
+    "year": "2nd",
+    "course": "BACOM",
+    "gender": "female",
+    "study_status": "bad",
+    "problems": [
+        "" 
+    ]
+    
+}

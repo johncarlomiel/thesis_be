@@ -2,7 +2,10 @@ const express = require("express");
 const jwt = require('jsonwebtoken');
 const mysql = require("mysql")
 const cors = require('cors');
-
+const formidable = require('formidable');
+var uniqid = require('uniqid');
+path = require('path')
+var fs = require('fs')
 var pool = mysql.createPool({
     connectionLimit: 10000,
     host: 'localhost',
@@ -14,6 +17,111 @@ var pool = mysql.createPool({
 const app = express();
 app.use(express.json());
 app.use(cors())
+app.use(express.urlencoded({ extended: true }))
+app.use(express.static('./'))
+
+function deleteCurrentPhoto(req, res, next) {
+    pool.getConnection((error, connection) => {
+        if (error) throw errror;
+
+        let query = connection.query(`SELECT eform_path FROM users WHERE id = ${req.userData.id}`, (err, results, fields) => {
+            if (err) throw err;
+            if (results[0].eform_path != "") {
+                fs.unlink(results[0].eform_path, (err) => {
+                    if (err) throw err;
+                    console.log(results[0].eform_path + " Deleted");
+                });
+            } else {
+                console.log("empty")
+
+            }
+
+            next();
+
+            console.log(results)
+        })
+        console.log(query.sql)
+    })
+}
+
+function uploadPhoto(req, res, next) {
+
+
+    var form = new formidable.IncomingForm();
+    var profilePath;
+
+    form.on('error', (err) => {
+        console.log(err)
+    });
+
+    form.parse(req, (err, fields, files) => {
+        console.log(req)
+        if (err) throw err;
+
+        req.body = fields;
+        console.log(req.body.image)
+
+
+
+    });
+
+    form.on('fileBegin', function (name, file) {
+        console.log(file)
+        let newImageName = req.userData.id + '.' + file.name.split('.').pop();
+        profilePath = __dirname + '/public/uploads/' + Date.now() + newImageName;
+        file.path = profilePath;
+        profilePath = 'public/uploads/' + Date.now() + newImageName;
+
+    });
+
+    form.on('file', function (name, file) {
+        req.body.eform = profilePath;
+        console.log('Uploaded ' + file.name);
+    });
+
+    form.on('end', () => {
+        req.body.eform = profilePath;
+        next();
+    });
+}
+app.post(`/api/submitEform`, [verifyToken, uploadPhoto, deleteCurrentPhoto], (req, res) => {
+
+    pool.getConnection((err, connection) => {
+        let query = connection.query(`UPDATE users SET eform_path = ? WHERE id = ?`, [req.body.eform, req.userData.id], (error, results, fields) => {
+            if (error) {
+                res.status(400).json({ message: "Error updating" });
+                throw error;
+            }
+            res.status(200).json({ message: "Eform Updated" });
+
+        });
+        console.log(query.sql)
+
+    })
+});
+
+app.get("/api/getEform", verifyToken, (req, res) => {
+
+
+
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let query = connection.query(`SELECT eform_path FROM users WHERE id = ${req.userData.id}`, (error, results, fields) => {
+            if (error) {
+                res.status(404).json({ message: "Error" });
+                throw error;
+            }
+            if (results[0].eform_path == "") {
+                res.status(200).json({ hasEform: false, url: "" })
+            } else {
+
+                res.status(200).json({ url: "http://192.168.100.3:5000/" + results[0].eform_path, hasEform: true })
+            }
+
+
+        });
+    })
+});
 
 
 app.post("/api/register", (req, res) => {
@@ -383,6 +491,27 @@ app.get('/api/admin/getInfo', (req, res) => {
     })
 });
 
+app.get('/api/admin/getEform', (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let query = connection.query(`SELECT eform_path FROM users WHERE id = ${req.query.id}`, (error, results, fields) => {
+            if (error) {
+                res.status(404).json({ message: "Error" });
+                throw error;
+            }
+            if (results[0].eform_path == "") {
+                res.status(200).json({ hasEform: false, url: "" })
+            } else {
+
+                res.status(200).json({ url: "http://192.168.100.5:5000/" + results[0].eform_path, hasEform: true })
+            }
+        });
+
+
+    })
+});
+
+
 app.get('/api/admin/getMoreInfo', (req, res) => {
     pool.getConnection((err, connection) => {
         let tablenames = "troubling_problems, someone_to_talk, happiest_expi, downful_expi, ambition, want_to_change";
@@ -505,6 +634,21 @@ app.delete("/api/admin/users", (req, res) => {
         console.log(query.sql)
     })
 })
+
+function decode_base64(base64str, filename) {
+
+    var buf = Buffer.from(base64str, 'base64');
+
+    fs.writeFile(path.join(__dirname, '/public/', filename), buf, function (error) {
+        if (error) {
+            throw error;
+        } else {
+            console.log('File created from base64 string!');
+            return true;
+        }
+    });
+
+}
 
 
 app.listen(5000, () => {
