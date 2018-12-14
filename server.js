@@ -539,6 +539,55 @@ app.get('/api/admin/getProblems', (req, res) => {
     })
 });
 
+app.get("/api/admin/getSDS", (req, res) => {
+    let holder = [];
+    function getCodes(callback) {
+        pool.getConnection((err, connection) => {
+            if (err) throw err;
+
+
+            const query = connection.query(`SELECT code FROM user_code WHERE user_id=${req.query.id}`, (error, results, fields) => {
+                if (error) throw error;
+                console.log(results.length)
+                results.forEach((element, index) => {
+                    const query = connection.query('SELECT * from `code` WHERE `code` = ?', [element.code], (error, results, fields) => {
+                        if (error) throw error;
+                        holder.push({
+                            name: element.code,
+                            result: results
+                        })
+                        console.log(index)
+                        console.log(query.sql)
+                    })
+
+                });
+
+
+
+                setTimeout(() => callback(holder), 1000)
+
+
+
+            });
+
+
+
+
+
+
+
+
+
+
+        });
+    }
+
+    getCodes((data) => {
+        res.status(200).json(data)
+        console.log(data)
+    })
+})
+
 
 app.post("/api/admin/graph", async (req, res) => {
 
@@ -634,6 +683,8 @@ app.delete("/api/admin/users", (req, res) => {
         console.log(query.sql)
     })
 })
+
+
 
 function decode_base64(base64str, filename) {
 
