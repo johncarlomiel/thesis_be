@@ -7,7 +7,6 @@ var uniqid = require('uniqid');
 path = require('path')
 var fs = require('fs')
 var pool = mysql.createPool({
-    connectionLimit: 10000,
     host: 'localhost',
     user: 'root',
     password: '',
@@ -26,6 +25,8 @@ function deleteCurrentPhoto(req, res, next) {
 
         let query = connection.query(`SELECT eform_path FROM users WHERE id = ${req.userData.id}`, (err, results, fields) => {
             if (err) throw err;
+            // When done with the connection, release it.
+            connection.release();
             if (results[0].eform_path != "") {
                 fs.unlink(results[0].eform_path, (err) => {
                     if (err) throw err;
@@ -92,6 +93,8 @@ app.post(`/api/submitEform`, [verifyToken, uploadPhoto, deleteCurrentPhoto], (re
                 res.status(400).json({ message: "Error updating" });
                 throw error;
             }
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json({ message: "Eform Updated" });
 
         });
@@ -111,6 +114,8 @@ app.get("/api/getEform", verifyToken, (req, res) => {
                 res.status(404).json({ message: "Error" });
                 throw error;
             }
+            // When done with the connection, release it.
+            connection.release();
             if (results[0].eform_path == "") {
                 res.status(200).json({ hasEform: false, url: "" })
             } else {
@@ -131,7 +136,7 @@ app.post("/api/register", (req, res) => {
             if (results.length == 0) {
                 //Insert it
                 connection.query("INSERT INTO users SET ?", {
-                    username: req.body.username, password: req.body.password, name: req.body.name
+                    username: req.body.username, password: req.body.password, name: req.body.name, type: "user"
                 },
                     (error, results, fields) => {
                         if (error) {
@@ -142,7 +147,9 @@ app.post("/api/register", (req, res) => {
                         connection.query("INSERT INTO reserve SET ?", {
                             user_id: results.insertId
                         }, (error, results, fields) => {
-
+                            if (error) throw error;
+                            // When done with the connection, release it.
+                            connection.release();
                         });
 
 
@@ -169,10 +176,13 @@ app.post("/api/register", (req, res) => {
 
 });
 
+
 app.get('/api/checkSdsStatus', verifyToken, (req, res) => {
     pool.getConnection((err, connection) => {
         if (err) throw err;
         let query = connection.query(`SELECT * FROM user_code WHERE user_id=${req.userData.id}`, (error, results, fields) => {
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json(results)
         })
     });
@@ -187,6 +197,8 @@ app.post("/api/login", (req, res) => {
             [req.body.username, req.body.password],
             (error, results, fields) => {
                 if (error) throw error;
+                // When done with the connection, release it.
+                connection.release();
                 if (results.length > 0) {
                     let payload = {
                         id: results[0].id,
@@ -200,8 +212,10 @@ app.post("/api/login", (req, res) => {
 
                     });
                 } else {
-                    res.status(400).json({ message: "Invalid username or password" })
+                    res.status(401).json({ message: "Invalid username or password" })
                 }
+
+
             });
 
 
@@ -221,11 +235,13 @@ app.post("/api/submitResult", verifyToken, (req, res) => {
 
         let query = connection.query(`SELECT * FROM user_code WHERE user_id=${req.userData.id}`, (error, results, fields) => {
             console.log(results.length)
+
             if (results.length == 0) {
                 console.log("true")
                 let query = connection.query('INSERT INTO user_code (user_id, code) VALUES ?', [codes], (error, results, fields) => {
                     if (error) throw error;
-
+                    // When done with the connection, release it.
+                    connection.release();
                     res.status(200).json({ hetto: "wer" })
 
 
@@ -244,6 +260,7 @@ app.post("/api/submitResult", verifyToken, (req, res) => {
 
 
 app.get("/api/checkSession", verifyToken, (req, res) => {
+
     res.status(200).json(req.userData);
 });
 
@@ -253,6 +270,8 @@ app.get('/api/getInfo', verifyToken, (req, res) => {
         if (err) throw err;
         let query = connection.query(`SELECT ${tablenames} FROM users WHERE id=${req.userData.id}`, (err, results, fields) => {
             if (err) throw err;
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json(results[0]);
 
         });
@@ -265,6 +284,8 @@ app.get('/api/getMoreInfo', verifyToken, (req, res) => {
         if (err) throw err;
         let query = connection.query(`SELECT ${tablenames} FROM users WHERE id=${req.userData.id}`, (err, results, fields) => {
             if (err) throw err;
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json(results[0]);
 
         });
@@ -279,6 +300,8 @@ app.get('/api/getProblems', verifyToken, (req, res) => {
 
         let query = connection.query(`SELECT * FROM reserve WHERE user_id = ${req.userData.id}`, (error, results, fields) => {
             if (error) throw error;
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json(results[0])
         });
         console.log(query.sql)
@@ -300,7 +323,8 @@ app.put('/api/updateInfo', verifyToken, (req, res) => {
                 res.status(400).json({ err })
                 throw err;
             }
-
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json({ message: "Updated" });
         });
         console.log(qwe.sql)
@@ -322,6 +346,8 @@ app.put('/api/updateMoreInfo', verifyToken, (req, res) => {
                 res.status(400).json({ message: "sql error" });
                 throw error;
             }
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json({ message: "Sucess" })
         });
         console.log(query.sql)
@@ -346,6 +372,8 @@ app.put('/api/updateProblems', verifyToken, (req, res) => {
         if (err) throw err;
         let query = connection.query(`UPDATE reserve SET ${fieldnameArr.toString()} WHERE user_id = ${req.userData.id}`, valuesArr, (error, results, fields) => {
             if (error) throw error;
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json({ status: 200, message: "Success!" })
 
         });
@@ -399,6 +427,8 @@ app.get('/api/completeTest', verifyToken, (req, res) => {
         if (err) throw err;
         let query = connection.query(`SELECT code FROM user_code WHERE user_id=${req.userData.id}`, (error, results, fields) => {
             if (error) throw error;
+            // When done with the connection, release it.
+            connection.release();
 
         })
     })
@@ -418,6 +448,8 @@ app.get('/api/getMyCode', verifyToken, (req, res) => {
                 results.forEach((element, index) => {
                     const query = connection.query('SELECT * from `code` WHERE `code` = ?', [element.code], (error, results, fields) => {
                         if (error) throw error;
+                        // When done with the connection, release it.
+                        connection.release();
                         holder.push({
                             name: element.code,
                             result: results
@@ -460,7 +492,9 @@ app.get('/api/getMyCode', verifyToken, (req, res) => {
 //Get all users
 app.get('/api/admin/users', (req, res) => {
     pool.getConnection((err, connection) => {
-        connection.query("SELECT id, username, name FROM users", (error, results, fields) => {
+        connection.query("SELECT id, username, name FROM users WHERE type='user'", (error, results, fields) => {
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json(results)
         });
     })
@@ -471,6 +505,8 @@ app.get("/api/admin/searchUsers", (req, res) => {
     pool.getConnection((err, connection) => {
         let query = connection.query(`SELECT * FROM users WHERE name LIKE '%${req.query.keyword}%'`, (error, results, fields) => {
             if (error) throw error;
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json(results)
         })
         console.log(query.sql)
@@ -484,6 +520,8 @@ app.get('/api/admin/getInfo', (req, res) => {
         if (err) throw err;
         let query = connection.query(`SELECT ${tablenames} FROM users WHERE id=${req.query.id}`, (err, results, fields) => {
             if (err) throw err;
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json(results[0]);
 
         });
@@ -499,6 +537,8 @@ app.get('/api/admin/getEform', (req, res) => {
                 res.status(404).json({ message: "Error" });
                 throw error;
             }
+            // When done with the connection, release it.
+            connection.release();
             if (results[0].eform_path == "") {
                 res.status(200).json({ hasEform: false, url: "" })
             } else {
@@ -518,6 +558,8 @@ app.get('/api/admin/getMoreInfo', (req, res) => {
         if (err) throw err;
         let query = connection.query(`SELECT ${tablenames} FROM users WHERE id=${req.query.id}`, (err, results, fields) => {
             if (err) throw err;
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json(results[0]);
 
         });
@@ -532,6 +574,8 @@ app.get('/api/admin/getProblems', (req, res) => {
 
         let query = connection.query(`SELECT * FROM reserve WHERE user_id = ${req.query.id}`, (error, results, fields) => {
             if (error) throw error;
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json(results[0])
         });
         console.log(query.sql)
@@ -552,6 +596,7 @@ app.get("/api/admin/getSDS", (req, res) => {
                 results.forEach((element, index) => {
                     const query = connection.query('SELECT * from `code` WHERE `code` = ?', [element.code], (error, results, fields) => {
                         if (error) throw error;
+
                         holder.push({
                             name: element.code,
                             result: results
@@ -561,6 +606,9 @@ app.get("/api/admin/getSDS", (req, res) => {
                     })
 
                 });
+
+                // When done with the connection, release it.
+                connection.release();
 
 
 
@@ -631,7 +679,7 @@ app.post("/api/admin/graph", async (req, res) => {
         }
         console.log("second end")
     });
-
+    console.log(criteriaMet)
     pool.getConnection((err, connection) => {
         console.log("third start")
         if (err) throw err;
@@ -648,6 +696,8 @@ app.post("/api/admin/graph", async (req, res) => {
                 result.notCondition.data = results;
                 let query = connection.query(`SELECT * FROM users`, (error, results, fields) => {
                     if (error) throw error;
+                    // When done with the connection, release it.
+                    connection.release();
                     result.allResult.value = results.length;
                     result.allResult.data = results;
 
@@ -678,11 +728,79 @@ app.delete("/api/admin/users", (req, res) => {
 
         let query = connection.query(`DELETE FROM users WHERE id=${req.query.id}`, (error, results, fields) => {
             if (error) throw error;
+            // When done with the connection, release it.
+            connection.release();
             res.status(200).json(results)
         })
         console.log(query.sql)
     })
 })
+
+app.post("/api/admin/genGraph", (req, res) => {
+    req.body.sqlTable = replaceAll(req.body.sqlTable, "\n", ",");
+
+    console.log(req.body.sql)
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let query = connection.query(`SELECT ${req.body.sqlTable} FROM users INNER JOIN reserve ON users.id = reserve.user_id WHERE ${req.body.sql}`, (error, results, fields) => {
+            if (error) throw error;
+            // When done with the connection, release it.
+            connection.release();
+            res.json(results)
+        })
+        console.log(query.sql)
+    })
+});
+
+app.post("/api/admin/indivProb", (req, res) => {
+    console.log(req.body)
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let query = connection.query(`SELECT username, name, year, course, gender FROM users INNER JOIN reserve ON users.id = reserve.user_id WHERE ${req.body.problem} AND ${req.body.userCriteria}`, (error, results, fields) => {
+            if (error) throw error;
+            // When done with the connection, release it.
+            connection.release();
+            res.json(results);
+        });
+        console.log(query.sql)
+    });
+
+});
+
+
+
+app.post("/api/admin/login", (req, res) => {
+    console.log(req.body)
+
+
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+
+        let query = connection.query(`SELECT username, password, type FROM users WHERE username='${req.body.username}' AND password='${req.body.password}' AND type = 'admin' `, (error, results, fields) => {
+            if (error) throw error;
+            // When done with the connection, release it.
+            connection.release();
+            if (results.length > 0) {
+
+                let payload = {
+                    username: results[0].username
+                }
+                jwt.sign(payload, "adminsecretshhhhhh", { expiresIn: '1d' }, (err, token) => {
+                    if (err) throw err;
+
+                    res.json(token);
+
+                });
+
+            } else {
+                res.status(401).json({ message: "Wrong username or password" })
+            }
+        })
+        console.log(query.sql)
+    });
+
+});
+
 
 
 
@@ -699,6 +817,9 @@ function decode_base64(base64str, filename) {
         }
     });
 
+}
+function replaceAll(str, find, replace) {
+    return str.replace(new RegExp(find, 'g'), replace);
 }
 
 
