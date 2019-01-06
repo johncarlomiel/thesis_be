@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const mysql = require("mysql")
 const cors = require('cors');
 const formidable = require('formidable');
+const bcrypt = require('bcrypt');
 var uniqid = require('uniqid');
 path = require('path')
 var fs = require('fs')
@@ -135,8 +136,11 @@ app.post("/api/register", (req, res) => {
         connection.query(`SELECT * FROM users WHERE username="${req.body.username}"`, (error, results, fields) => {
             if (results.length == 0) {
                 //Insert it
+                //Hash the password
+                let hash = bcrypt.hashSync(req.body.password, 10);
+
                 connection.query("INSERT INTO users SET ?", {
-                    username: req.body.username, password: req.body.password, name: req.body.name, type: "user"
+                    username: req.body.username, password: hash, name: req.body.name, type: "user"
                 },
                     (error, results, fields) => {
                         if (error) {
@@ -193,24 +197,30 @@ app.post("/api/login", (req, res) => {
     pool.getConnection((err, connection) => {
         if (err) throw err;
 
-        connection.query("SELECT * FROM `users` WHERE `username` = ? AND `password` = ?",
-            [req.body.username, req.body.password],
+        connection.query("SELECT * FROM `users` WHERE `username` = ?",
+            [req.body.username],
             (error, results, fields) => {
                 if (error) throw error;
                 // When done with the connection, release it.
                 connection.release();
                 if (results.length > 0) {
-                    let payload = {
-                        id: results[0].id,
-                        username: results[0].username,
-                        name: results[0].name
+
+                    if (bcrypt.compareSync(req.body.password, results[0].password)) {
+                        let payload = {
+                            id: results[0].id,
+                            username: results[0].username,
+                            name: results[0].name
+                        }
+                        jwt.sign(payload, "shhhhhh", { expiresIn: '1d' }, (err, token) => {
+                            if (err) throw err;
+
+                            res.json(token);
+
+                        });
+                    } else {
+                        res.status(401).json({ message: "Invalid username or password" })
+
                     }
-                    jwt.sign(payload, "shhhhhh", { expiresIn: '1d' }, (err, token) => {
-                        if (err) throw err;
-
-                        res.json(token);
-
-                    });
                 } else {
                     res.status(401).json({ message: "Invalid username or password" })
                 }
@@ -396,31 +406,6 @@ app.put('/api/updateProblems', verifyToken, (req, res) => {
 
 
 
-function verifyToken(req, res, next) {
-    //Get auth header value
-    const bearerHeader = req.headers["authorization"];
-
-    if (typeof bearerHeader !== 'undefined') {
-        const bearer = bearerHeader.split(" ")[1];
-
-        req.token = bearer;
-
-        jwt.verify(bearer, 'shhhhhh', (err, authData) => {
-            if (err) {
-                res.status(403).json({ message: "Forbidden" })
-                throw err
-            } else {
-                req.userData = authData;
-                next();
-            }
-        });
-
-
-    } else {
-        //Forbidden
-        res.status(403).json({ message: "Forbidden" })
-    }
-}
 
 app.get('/api/completeTest', verifyToken, (req, res) => {
     pool.getConnection((err, connection) => {
@@ -490,30 +475,69 @@ app.get('/api/getMyCode', verifyToken, (req, res) => {
 
 //Admin Routes
 //Get all users
-app.get('/api/admin/users', (req, res) => {
-    pool.getConnection((err, connection) => {
-        connection.query("SELECT id, username, name FROM users WHERE type='user'", (error, results, fields) => {
-            // When done with the connection, release it.
-            connection.release();
-            res.status(200).json(results)
-        });
-    })
-})
+app.get('/api/admin/users', verifyAdminToken, (req, res) => {
+    if (req.query.type == "user") {
+        pool.getConnection((err, connection) => {
+            connection.query("SELECT id, username, name FROM users WHERE type='user'", (error, results, fields) => {
+                // When done with the connection, release it.
+                connection.release();
+                res.status(200).json(results)
+            });
+        })
+    } else {
+        pool.getConnection((err, connection) => {
+            connection.query("SELECT id, username, name, type FROM users", (error, results, fields) => {
+                // When done with the connection, release it.
+                connection.release();
+                res.status(200).json(results)
+            });
+        })
+    }
+});
+
+app.put("/api/admin/account", verifyAdminToken, (req, res) => {
+    if (req.body.fieldname != "" && req.body.value != "" && req.body.id) {
+        pool.getConnection((err, connection) => {
+            if (err) throw err;
+            let query = connection.query(`UPDATE users SET ${req.body.fieldname} = ? WHERE id = ?`, [req.body.value, req.body.id], (error, results, fields) => {
+                if (error) throw error;
+                connection.release();
+                res.json({ message: "Success" });
+
+            })
+            console.log(query.sql)
+        })
+    }
+});
+
 
 //Serach
-app.get("/api/admin/searchUsers", (req, res) => {
-    pool.getConnection((err, connection) => {
-        let query = connection.query(`SELECT * FROM users WHERE name LIKE '%${req.query.keyword}%'`, (error, results, fields) => {
-            if (error) throw error;
-            // When done with the connection, release it.
-            connection.release();
-            res.status(200).json(results)
+app.get("/api/admin/searchUsers", verifyAdminToken, (req, res) => {
+    console.log(req.query.type)
+    if (req.query.type == "user") {
+        pool.getConnection((err, connection) => {
+            let query = connection.query(`SELECT * FROM users WHERE type = 'user' AND username LIKE '%${req.query.keyword}%'`, (error, results, fields) => {
+                if (error) throw error;
+                // When done with the connection, release it.
+                connection.release();
+                res.status(200).json(results)
+            })
+            console.log(query.sql)
         })
-        console.log(query.sql)
-    })
+    } else {
+        pool.getConnection((err, connection) => {
+            let query = connection.query(`SELECT * FROM users WHERE username LIKE '%${req.query.keyword}%'`, (error, results, fields) => {
+                if (error) throw error;
+                // When done with the connection, release it.
+                connection.release();
+                res.status(200).json(results)
+            })
+            console.log(query.sql)
+        })
+    }
 })
 
-app.get('/api/admin/getInfo', (req, res) => {
+app.get('/api/admin/getInfo', verifyAdminToken, (req, res) => {
     pool.getConnection((err, connection) => {
 
         let tablenames = "name, course, age, gender, religion, place_birth, addr, cp_num, mother_name, mother_religion, mother_job, father_name, father_religion, father_job, not_livingwith_parents, study_status, transpo, allowed_night, study_helper, hobby, have_friends";
@@ -529,7 +553,7 @@ app.get('/api/admin/getInfo', (req, res) => {
     })
 });
 
-app.get('/api/admin/getEform', (req, res) => {
+app.get('/api/admin/getEform', verifyAdminToken, (req, res) => {
     pool.getConnection((err, connection) => {
         if (err) throw err;
         let query = connection.query(`SELECT eform_path FROM users WHERE id = ${req.query.id}`, (error, results, fields) => {
@@ -552,7 +576,7 @@ app.get('/api/admin/getEform', (req, res) => {
 });
 
 
-app.get('/api/admin/getMoreInfo', (req, res) => {
+app.get('/api/admin/getMoreInfo', verifyAdminToken, (req, res) => {
     pool.getConnection((err, connection) => {
         let tablenames = "troubling_problems, someone_to_talk, happiest_expi, downful_expi, ambition, want_to_change";
         if (err) throw err;
@@ -566,7 +590,7 @@ app.get('/api/admin/getMoreInfo', (req, res) => {
     })
 });
 
-app.get('/api/admin/getProblems', (req, res) => {
+app.get('/api/admin/getProblems', verifyAdminToken, (req, res) => {
     pool.getConnection((err, connection) => {
         if (err) throw err;
 
@@ -583,7 +607,92 @@ app.get('/api/admin/getProblems', (req, res) => {
     })
 });
 
-app.get("/api/admin/getSDS", (req, res) => {
+app.put('/api/admin/allResult', verifyAdminToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let query = connection.query(`UPDATE users SET isResPrinted = 1 WHERE users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+            if (error) throw error;
+            connection.release();
+            console.log(results)
+            res.json({ "message": "success" })
+        })
+
+    })
+});
+
+app.get('/api/admin/oldResults', verifyAdminToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+
+        let query = connection.query(`SELECT id,username, name FROM users WHERE isResPrinted = 1 AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+            if (error) throw error;
+            connection.release();
+            res.json(results);
+
+        })
+    })
+});
+
+
+
+app.get('/api/admin/newResults', verifyAdminToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+
+        let query = connection.query(`SELECT id,username, name FROM users WHERE isResPrinted = 0 AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+            if (error) throw error;
+            let holder = [];
+            results.forEach((val) => {
+                let data = {
+                    info: val,
+                    data: []
+                }
+
+                connection.query(`SELECT code FROM user_code WHERE user_id=${val.id}`, (error, results, fields) => {
+                    results.forEach(element => {
+                        const query = connection.query('SELECT * from `code` WHERE `code` = ?', [element.code], (error, results, fields) => {
+                            if (error) throw error;
+
+                            data.data.push({
+                                name: element.code,
+                                result: results
+                            })
+
+                        })
+                    });
+
+                    holder.push(data)
+                });
+
+
+            });
+
+            setTimeout(() => {
+                connection.release();
+                res.json(holder)
+            }, 1000)
+
+            // connection.release();
+            // res.json(results)
+        });
+        console.log(query.sql)
+    })
+});
+
+app.put("/api/admin/singleResult", verifyAdminToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+
+        let query = connection.query(`UPDATE users SET isResPrinted = 1 WHERE id = ${req.body.id}`, (error, results, fields) => {
+            if (error) throw error;
+            connection.release();
+            res.json({ "message": "Updated" })
+        })
+        console.log(query.sql)
+    })
+});
+
+app.get("/api/admin/getSDS", verifyAdminToken, (req, res) => {
     let holder = [];
     function getCodes(callback) {
         pool.getConnection((err, connection) => {
@@ -637,7 +746,7 @@ app.get("/api/admin/getSDS", (req, res) => {
 })
 
 
-app.post("/api/admin/graph", async (req, res) => {
+app.post("/api/admin/graph", verifyAdminToken, async (req, res) => {
 
     let result = {
         conditionMet: { value: 0, data: Array.apply(null, Array()), label: "Criteria and Problems" },
@@ -722,7 +831,7 @@ app.post("/api/admin/graph", async (req, res) => {
 
 });
 
-app.delete("/api/admin/users", (req, res) => {
+app.delete("/api/admin/users", verifyAdminToken, (req, res) => {
     pool.getConnection((err, connection) => {
         if (err) throw err;
 
@@ -736,7 +845,7 @@ app.delete("/api/admin/users", (req, res) => {
     })
 })
 
-app.post("/api/admin/genGraph", (req, res) => {
+app.post("/api/admin/genGraph", verifyAdminToken, (req, res) => {
     req.body.sqlTable = replaceAll(req.body.sqlTable, "\n", ",");
 
     console.log(req.body.sql)
@@ -752,7 +861,7 @@ app.post("/api/admin/genGraph", (req, res) => {
     })
 });
 
-app.post("/api/admin/indivProb", (req, res) => {
+app.post("/api/admin/indivProb", verifyAdminToken, (req, res) => {
     console.log(req.body)
     pool.getConnection((err, connection) => {
         if (err) throw err;
@@ -776,21 +885,26 @@ app.post("/api/admin/login", (req, res) => {
     pool.getConnection((err, connection) => {
         if (err) throw err;
 
-        let query = connection.query(`SELECT username, password, type FROM users WHERE username='${req.body.username}' AND password='${req.body.password}' AND type = 'admin' `, (error, results, fields) => {
+
+        let query = connection.query(`SELECT username, password, type FROM users WHERE username = ? AND type = 'admin'`, [req.body.username], (error, results, fields) => {
             if (error) throw error;
             // When done with the connection, release it.
             connection.release();
             if (results.length > 0) {
 
-                let payload = {
-                    username: results[0].username
+                if (bcrypt.compareSync(req.body.password, results[0].password)) {
+                    let payload = {
+                        username: results[0].username
+                    }
+                    jwt.sign(payload, "adminsecretshhhhhh", { expiresIn: '1d' }, (err, token) => {
+                        if (err) throw err;
+
+                        res.json(token);
+
+                    });
+                } else {
+                    res.status(401).json({ message: "Wrong username or password" })
                 }
-                jwt.sign(payload, "adminsecretshhhhhh", { expiresIn: '1d' }, (err, token) => {
-                    if (err) throw err;
-
-                    res.json(token);
-
-                });
 
             } else {
                 res.status(401).json({ message: "Wrong username or password" })
@@ -804,22 +918,59 @@ app.post("/api/admin/login", (req, res) => {
 
 
 
-function decode_base64(base64str, filename) {
 
-    var buf = Buffer.from(base64str, 'base64');
-
-    fs.writeFile(path.join(__dirname, '/public/', filename), buf, function (error) {
-        if (error) {
-            throw error;
-        } else {
-            console.log('File created from base64 string!');
-            return true;
-        }
-    });
-
-}
 function replaceAll(str, find, replace) {
     return str.replace(new RegExp(find, 'g'), replace);
+}
+
+function verifyAdminToken(req, res, next) {
+    const bearerHeader = req.headers["authorization"];
+
+    if (typeof bearerHeader !== 'undefined') {
+        const bearer = bearerHeader.split(" ")[1];
+
+        req.token = bearer;
+
+        jwt.verify(bearer, 'adminsecretshhhhhh', (err, authData) => {
+            if (err) {
+                res.status(403).json({ message: "Forbidden" })
+                throw err
+            } else {
+                next();
+            }
+        });
+
+
+    } else {
+        //Forbidden
+        res.status(403).json({ message: "Forbidden" })
+    }
+}
+
+function verifyToken(req, res, next) {
+    //Get auth header value
+    const bearerHeader = req.headers["authorization"];
+
+    if (typeof bearerHeader !== 'undefined') {
+        const bearer = bearerHeader.split(" ")[1];
+
+        req.token = bearer;
+
+        jwt.verify(bearer, 'shhhhhh', (err, authData) => {
+            if (err) {
+                res.status(403).json({ message: "Forbidden" })
+                throw err
+            } else {
+                req.userData = authData;
+                next();
+            }
+        });
+
+
+    } else {
+        //Forbidden
+        res.status(403).json({ message: "Forbidden" })
+    }
 }
 
 
