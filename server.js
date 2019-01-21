@@ -8,6 +8,7 @@ var uniqid = require('uniqid');
 path = require('path')
 var fs = require('fs')
 var pool = mysql.createPool({
+    connectionLimit: 1,
     host: 'localhost',
     user: 'root',
     password: '',
@@ -25,7 +26,11 @@ function deleteCurrentPhoto(req, res, next) {
         if (error) throw errror;
 
         let query = connection.query(`SELECT eform_path FROM users WHERE id = ${req.userData.id}`, (err, results, fields) => {
-            if (err) throw err;
+            if (err) {
+                res.json({ message: "Mysql Error" });
+                connection.release();
+                throw err;
+            };
             // When done with the connection, release it.
             connection.release();
             if (results[0].eform_path != "") {
@@ -91,7 +96,9 @@ app.post(`/api/submitEform`, [verifyToken, uploadPhoto, deleteCurrentPhoto], (re
     pool.getConnection((err, connection) => {
         let query = connection.query(`UPDATE users SET eform_path = ? WHERE id = ?`, [req.body.eform, req.userData.id], (error, results, fields) => {
             if (error) {
-                res.status(400).json({ message: "Error updating" });
+                // When done with the connection, release it.
+                res.json({ message: "Mysql Error" });
+                connection.release();
                 throw error;
             }
             // When done with the connection, release it.
@@ -112,7 +119,8 @@ app.get("/api/getEform", verifyToken, (req, res) => {
         if (err) throw err;
         let query = connection.query(`SELECT eform_path FROM users WHERE id = ${req.userData.id}`, (error, results, fields) => {
             if (error) {
-                res.status(404).json({ message: "Error" });
+                res.json({ message: "Mysql Error" });
+                connection.release();
                 throw error;
             }
             // When done with the connection, release it.
@@ -144,6 +152,8 @@ app.post("/api/register", (req, res) => {
                 },
                     (error, results, fields) => {
                         if (error) {
+                            res.json({ message: "Mysql Error" });
+                            connection.release();
                             throw error;
                         }
                         console.log(results)
@@ -165,6 +175,8 @@ app.post("/api/register", (req, res) => {
 
 
             } else {
+                // When done with the connection, release it.
+                connection.release();
                 res.status(403).json({ message: "Username already taken" })
 
             }
@@ -183,8 +195,17 @@ app.post("/api/register", (req, res) => {
 
 app.get('/api/checkSdsStatus', verifyToken, (req, res) => {
     pool.getConnection((err, connection) => {
-        if (err) throw err;
+        if (err) {
+            res.json({ message: "Mysql Error" });
+            connection.release();
+            throw err;
+        };
         let query = connection.query(`SELECT * FROM user_code WHERE user_id=${req.userData.id}`, (error, results, fields) => {
+            if (error) {
+                res.json({ message: "Mysql Error" });
+                connection.release();
+                throw error;
+            }
             // When done with the connection, release it.
             connection.release();
             res.status(200).json(results)
@@ -252,12 +273,18 @@ app.post("/api/submitResult", verifyToken, (req, res) => {
                     if (error) throw error;
                     // When done with the connection, release it.
                     connection.release();
+                    console.log(pool.config.connectionLimit)
+                    console.log("number of connection:" + pool._allConnections.length)
                     res.status(200).json({ hetto: "wer" })
 
 
 
                 });
             } else {
+                console.log(pool.config.connectionLimit)
+                console.log("number of connection:" + pool._allConnections.length)
+                connection.release();
+                console.log("number of connection:" + pool._freeConnections.length)
                 res.status(200)
             }
 
@@ -265,6 +292,59 @@ app.post("/api/submitResult", verifyToken, (req, res) => {
         console.log(query.sql)
     });
 
+});
+
+app.post("/api/submitSummaryCode", verifyToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let query = connection.query("UPDATE users SET ? WHERE ?", [{ summary_code: req.body.code }, { id: req.userData.id }], (error, results, fields) => {
+            if (error) throw error;
+            connection.release();
+            res.json({
+                message: "Inserted"
+            });
+        });
+        console.log(query.sql)
+    });
+});
+
+
+app.post("/api/submitLetters", verifyToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        // Transform every object into an array and push it into another array to meet mysql bulk inserting
+        bulkData = Array.apply(null, Array());
+        req.body.letters.forEach(element => {
+            bulkData.push([req.userData.id, element.value, element.letter, element.word])
+        });
+        // console.log(bulkData)
+        if (err) throw err;
+
+        let query = connection.query(`SELECT id FROM users WHERE users.id = ${req.userData.id} AND users.id NOT IN (SELECT letters.user_id FROM letters)`, (error, results, fields) => {
+            if (error) throw error;
+            console.log("Length: " + results.length)
+            if (results.length > 0) {
+                let query = connection.query("INSERT INTO letters (user_id, value, letter, word) VALUES ?", [bulkData], (error, results, fields) => {
+                    if (error) {
+                        res.status(400);
+                        throw error;
+                    };
+                    connection.release();
+                    // console.log(results)
+                    res.json({
+                        message: "Inserted"
+                    });
+
+                });
+            } else {
+                connection.release();
+            }
+
+
+        })
+
+        // console.log(query.sql)
+        // console.log("Query : " + query)
+    });
 });
 
 
@@ -390,21 +470,6 @@ app.put('/api/updateProblems', verifyToken, (req, res) => {
     });
 });
 
-// app.get("/api/getQuestions", (req, res) => {
-//     pool.getConnection((err, connection) => {
-
-//         let query = connection.query("SELECT * FROM problems", (error, results, fields) => {
-//             if (error) throw error;
-//             res.status(200).json(results);
-
-//         })
-
-//     })
-// });
-
-
-
-
 
 
 app.get('/api/completeTest', verifyToken, (req, res) => {
@@ -433,8 +498,7 @@ app.get('/api/getMyCode', verifyToken, (req, res) => {
                 results.forEach((element, index) => {
                     const query = connection.query('SELECT * from `code` WHERE `code` = ?', [element.code], (error, results, fields) => {
                         if (error) throw error;
-                        // When done with the connection, release it.
-                        connection.release();
+
                         holder.push({
                             name: element.code,
                             result: results
@@ -447,7 +511,11 @@ app.get('/api/getMyCode', verifyToken, (req, res) => {
 
 
 
-                setTimeout(() => callback(holder), 1000)
+                setTimeout(() => {
+                    // When done with the connection, release it.
+                    connection.release();
+                    callback(holder)
+                }, 1000)
 
 
 
@@ -511,12 +579,57 @@ app.put("/api/admin/account", verifyAdminToken, (req, res) => {
 });
 
 
+app.get('/api/admin/resultSearch', verifyAdminToken, (req, res) => {
+    console.log(req.body)
+    if (req.query.condition == "print-section-old") {
+        pool.getConnection((err, connection) => {
+            let query = connection.query(`SELECT * FROM users WHERE summary_code = '' AND isResPrinted = 0 AND (username LIKE ${connection.escape("%" + req.query.keyword + "%")} OR name LIKE ${connection.escape("%" + req.query.keyword + "%")}) AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+                if (error) throw error;
+                res.json(results);
+                connection.release();
+            });
+            console.log(query.sql)
+        });
+    } else if (req.query.condition == "print-section-new") {
+        pool.getConnection((err, connection) => {
+            let query = connection.query(`SELECT * FROM users WHERE summary_code <> '' AND isResPrinted = 0 AND (username LIKE ${connection.escape("%" + req.query.keyword + "%")} OR name LIKE ${connection.escape("%" + req.query.keyword + "%")}) AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+                if (error) throw error;
+                res.json(results);
+                connection.release();
+            });
+            console.log(query.sql)
+        });
+    } else if (req.query.condition == "old-archive") {
+        pool.getConnection((err, connection) => {
+            let query = connection.query(`SELECT * FROM users WHERE summary_code = '' AND isResPrinted = 1 AND (username LIKE ${connection.escape("%" + req.query.keyword + "%")} OR name LIKE ${connection.escape("%" + req.query.keyword + "%")}) AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+                if (error) throw error;
+                res.json(results);
+                connection.release();
+            });
+            console.log(query.sql)
+        });
+    } else if (req.query.condition == "new-archive") {
+        pool.getConnection((err, connection) => {
+            let query = connection.query(`SELECT * FROM users WHERE summary_code <> '' AND isResPrinted = 1 AND (username LIKE ${connection.escape("%" + req.query.keyword + "%")} OR name LIKE ${connection.escape("%" + req.query.keyword + "%")}) AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+                if (error) throw error;
+                res.json(results);
+                connection.release();
+            });
+            console.log(query.sql)
+        });
+    } else {
+        res.status(400);
+    }
+});
 //Serach
 app.get("/api/admin/searchUsers", verifyAdminToken, (req, res) => {
     console.log(req.query.type)
     if (req.query.type == "user") {
         pool.getConnection((err, connection) => {
-            let query = connection.query(`SELECT * FROM users WHERE type = 'user' AND username LIKE '%${req.query.keyword}%'`, (error, results, fields) => {
+            let condition = {
+                type: "user"
+            }
+            let query = connection.query(`SELECT * FROM users WHERE ? AND (username LIKE ${connection.escape('%' + req.query.keyword + '%')} OR name LIKE ${connection.escape('%' + req.query.keyword + '%')})`, [condition], (error, results, fields) => {
                 if (error) throw error;
                 // When done with the connection, release it.
                 connection.release();
@@ -526,7 +639,7 @@ app.get("/api/admin/searchUsers", verifyAdminToken, (req, res) => {
         })
     } else {
         pool.getConnection((err, connection) => {
-            let query = connection.query(`SELECT * FROM users WHERE username LIKE '%${req.query.keyword}%'`, (error, results, fields) => {
+            let query = connection.query(`SELECT * FROM users WHERE (username LIKE ${connection.escape('%' + req.query.keyword + '%')} OR name LIKE ${connection.escape('%' + req.query.keyword + '%')})`, (error, results, fields) => {
                 if (error) throw error;
                 // When done with the connection, release it.
                 connection.release();
@@ -620,11 +733,23 @@ app.put('/api/admin/allResult', verifyAdminToken, (req, res) => {
     })
 });
 
+app.get('/api/admin/oldTempResults', verifyAdminToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+
+        let query = connection.query(`SELECT id,username, name FROM users WHERE summary_code = '' AND isResPrinted = 1 AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+            if (error) throw error;
+            connection.release();
+            res.json(results);
+
+        })
+    })
+});
 app.get('/api/admin/oldResults', verifyAdminToken, (req, res) => {
     pool.getConnection((err, connection) => {
         if (err) throw err;
 
-        let query = connection.query(`SELECT id,username, name FROM users WHERE isResPrinted = 1 AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+        let query = connection.query(`SELECT id,username, name, summary_code FROM users WHERE summary_code <> '' AND isResPrinted = 1 AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
             if (error) throw error;
             connection.release();
             res.json(results);
@@ -633,51 +758,51 @@ app.get('/api/admin/oldResults', verifyAdminToken, (req, res) => {
     })
 });
 
+app.get("/api/admin/getLetters", verifyAdminToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let query = connection.query(`SELECT user_id, value, letter, word FROM letters WHERE user_id = ${req.query.id}`, (error, results, fields) => {
+            if (error) throw error;
+            connection.release();
+            res.json(results)
+
+        });
+        console.log(query.sql);
+    })
+});
+
+app.get('/api/admin/results', verifyAdminToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let query = connection.query(`SELECT * FROM users WHERE summary_code = '' AND isResPrinted = 0 AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+            if (error) throw error;
+            connection.release();
+            res.json(results);
+
+        })
+    });
+});
+
+
+
 
 
 app.get('/api/admin/newResults', verifyAdminToken, (req, res) => {
     pool.getConnection((err, connection) => {
         if (err) throw err;
 
-        let query = connection.query(`SELECT id,username, name FROM users WHERE isResPrinted = 0 AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+        let query = connection.query(`SELECT * FROM users WHERE summary_code <> '' AND isResPrinted = 0 AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
             if (error) throw error;
-            let holder = [];
-            results.forEach((val) => {
-                let data = {
-                    info: val,
-                    data: []
-                }
-
-                connection.query(`SELECT code FROM user_code WHERE user_id=${val.id}`, (error, results, fields) => {
-                    results.forEach(element => {
-                        const query = connection.query('SELECT * from `code` WHERE `code` = ?', [element.code], (error, results, fields) => {
-                            if (error) throw error;
-
-                            data.data.push({
-                                name: element.code,
-                                result: results
-                            })
-
-                        })
-                    });
-
-                    holder.push(data)
-                });
-
-
-            });
-
-            setTimeout(() => {
-                connection.release();
-                res.json(holder)
-            }, 1000)
-
+            connection.release();
+            res.json(results);
             // connection.release();
             // res.json(results)
         });
         console.log(query.sql)
     })
 });
+
+
 
 app.put("/api/admin/singleResult", verifyAdminToken, (req, res) => {
     pool.getConnection((err, connection) => {
@@ -716,12 +841,15 @@ app.get("/api/admin/getSDS", verifyAdminToken, (req, res) => {
 
                 });
 
-                // When done with the connection, release it.
-                connection.release();
 
 
 
-                setTimeout(() => callback(holder), 1000)
+
+                setTimeout(() => {
+                    // When done with the connection, release it.
+                    connection.release();
+                    callback(holder);
+                }, 1000)
 
 
 
@@ -878,14 +1006,13 @@ app.post("/api/admin/indivProb", verifyAdminToken, (req, res) => {
 
 
 
+
+
+
 app.post("/api/admin/login", (req, res) => {
     console.log(req.body)
-
-
     pool.getConnection((err, connection) => {
         if (err) throw err;
-
-
         let query = connection.query(`SELECT username, password, type FROM users WHERE username = ? AND type = 'admin'`, [req.body.username], (error, results, fields) => {
             if (error) throw error;
             // When done with the connection, release it.
