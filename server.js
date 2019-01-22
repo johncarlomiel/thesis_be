@@ -617,6 +617,25 @@ app.get('/api/admin/resultSearch', verifyAdminToken, (req, res) => {
             });
             console.log(query.sql)
         });
+    } else if (req.query.condition == "original-archive") {
+        pool.getConnection((err, connection) => {
+            let query = connection.query(`SELECT id,username, name FROM users WHERE isResPrinted = 1 AND users.id IN (SELECT user_id FROM user_code) AND (username LIKE ${connection.escape("%" + req.query.keyword + "%")} OR name LIKE ${connection.escape("%" + req.query.keyword + "%")})`, (error, results, fields) => {
+                if (error) throw error;
+                res.json(results);
+                connection.release();
+            });
+            console.log(query.sql)
+        });
+    } else if (req.query.condition == "original-print") {
+        pool.getConnection((err, connection) => {
+            let query = connection.query(`SELECT * FROM users WHERE isResPrinted = 0 AND users.id IN (SELECT user_id FROM user_code) AND (username LIKE ${connection.escape("%" + req.query.keyword + "%")} OR name LIKE ${connection.escape("%" + req.query.keyword + "%")})`, (error, results, fields) => {
+                if (error) throw error;
+                res.json(results);
+                connection.release();
+            });
+            console.log(query.sql)
+        });
+
     } else {
         res.status(400);
     }
@@ -786,7 +805,32 @@ app.get('/api/admin/results', verifyAdminToken, (req, res) => {
 
 
 
+app.get('/api/admin/old-archive', verifyAdminToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
 
+        let query = connection.query(`SELECT id,username, name FROM users WHERE isResPrinted = 1 AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+            if (error) throw error;
+            connection.release();
+            res.json(results);
+
+        })
+    })
+});
+app.get('/api/admin/old-print', verifyAdminToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+
+        let query = connection.query(`SELECT * FROM users WHERE isResPrinted = 0 AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+            if (error) throw error;
+            connection.release();
+            res.json(results);
+            // connection.release();
+            // res.json(results)
+        });
+        console.log(query.sql)
+    })
+});
 app.get('/api/admin/newResults', verifyAdminToken, (req, res) => {
     pool.getConnection((err, connection) => {
         if (err) throw err;
