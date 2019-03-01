@@ -7,8 +7,25 @@ const cors = require('cors');
 
 router.use(express.json());
 router.use(cors());
-
+const server_ip = "http://192.168.100.2:5000/";
 //Mobile App Routes
+
+router.get('/events', verifyToken, (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        let query = connection.query(`SELECT * FROM events`, (err, results) => {
+            if (err) {
+                res.status(400).json({ message: "Mysql Error" });
+                throw err;
+            }
+            results.forEach((element, index) => {
+                results[index].poster_url = server_ip + element.poster_url;
+            });
+            connection.release();
+            res.json(results)
+        });
+    });
+});
 router.post(`/submitEform`, [verifyToken, uploadPhoto, deleteCurrentPhoto], (req, res) => {
     pool.getConnection((err, connection) => {
         let query = connection.query(`UPDATE users SET eform_path = ? WHERE id = ?`, [req.body.eform, req.userData.id], (error, results, fields) => {

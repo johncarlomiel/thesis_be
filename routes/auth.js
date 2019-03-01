@@ -199,8 +199,14 @@ router.get('/payload', (req, res) => {
         const bearer = bearerHeader.split(" ")[1];
 
         req.token = bearer;
+        let secret = "";
+        if (req.query.user_type == "admin") {
+            secret = "adminsecretshhhhhh";
+        } else {
+            secret = "shhhhhh"
+        }
 
-        jwt.verify(bearer, 'shhhhhh', (err, authData) => {
+        jwt.verify(bearer, secret, (err, authData) => {
             if (err) {
                 res.status(403).json({ message: "Forbidden" })
                 throw err

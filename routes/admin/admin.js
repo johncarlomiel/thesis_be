@@ -4,8 +4,98 @@ const pool = require('../../configs/pool');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 
+var path = require('path');
+var formidable = require('formidable')
 router.use(express.json());
 router.use(cors());
+const server_url = "http://192.168.100.5:5000/";
+
+function uploadUpdatePoster(req, res, next) {
+
+    let form = new formidable.IncomingForm();
+    var posterPath;
+    var value;
+    form.on('error', (err) => {
+        console.log(err)
+    });
+    form.parse(req, (err, fields, files) => {
+        if (err) throw err;
+        req.body = fields;
+        value = req.body.value;
+        console.log(req.body);
+    });
+
+    form.on('fileBegin', function (name, file) {
+        let dir_path = path.dirname(require.main.filename)
+        let newImageName = file.name.split('.')[0] + '.' + file.name.split('.').pop();
+        posterPath = dir_path + '/public/posters/' + Date.now() + newImageName;
+        file.path = posterPath;
+        posterPath = 'public/posters/' + Date.now() + newImageName;
+
+    });
+    form.on('file', function (name, file) {
+        req.body.value = posterPath;
+        console.log('Uploaded ' + file.name);
+    });
+
+    form.on('end', () => {
+        if (req.query.field_name != "poster_url") {
+            req.body.value = value;
+        } else {
+            req.body.value = posterPath;
+        }
+        next();
+    });
+}
+
+router.put('/events', verifyAdminToken, uploadUpdatePoster, (req, res) => {
+    let field_name = req.query.field_name;
+    console.log(req.body)
+
+
+    let query = pool.query(`UPDATE events SET ${field_name} = '${req.body.value}' WHERE event_id = ${req.query.id}`, (error, results) => {
+        if (error) {
+            res.status(400).json({ message: "Mysql Error" });
+            console.log(error)
+            throw error;
+        }
+        res.status(200).json({ message: "QWe" })
+    });
+    console.log(query.sql)
+});
+router.delete('/events', verifyAdminToken, (req, res) => {
+    let query = pool.query('DELETE FROM events WHERE event_id = ?', [req.query.id], (err, results) => {
+        if (err) {
+            res.status(400).json({ message: "Mysql Error" });
+            throw err;
+        }
+        res.json({ message: "Deleted" });
+    })
+});
+router.get('/events', verifyAdminToken, (req, res) => {
+    pool.query('SELECT * FROM events', (error, results) => {
+        if (error) {
+            res.status(400).json({ message: "Mysql Error" });
+            throw error;
+        }
+        results.forEach((element, index) => {
+            results[index].poster_url = server_url + element.poster_url;
+        });
+        res.json(results);
+    })
+});
+
+router.post('/events', verifyAdminToken, uploadPoster, (req, res) => {
+    console.log(req.body)
+    pool.query('INSERT INTO events SET ?', req.body, (err, results) => {
+        if (err) {
+            res.status(400).json({ message: "Mysql Error" });
+            throw err;
+        }
+        console.log(results);
+        res.status(200).json({ message: "Inserted" });
+    });
+});
 
 router.get('/users', verifyAdminToken, (req, res) => {
     if (req.query.type == "user") {
@@ -234,7 +324,7 @@ router.get('/oldResults', verifyAdminToken, (req, res) => {
     pool.getConnection((err, connection) => {
         if (err) throw err;
 
-        let query = connection.query(`SELECT id,username, name, summary_code FROM users WHERE summary_code <> '' AND isResPrinted = 1 AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
+        let query = connection.query(`SELECT id,username, name, summary_code,timestamp FROM users WHERE summary_code <> '' AND isResPrinted = 1 AND users.id IN (SELECT user_id FROM user_code)`, (error, results, fields) => {
             if (error) throw error;
             connection.release();
             res.json(results);
@@ -398,6 +488,36 @@ router.post("/indivProb", verifyAdminToken, (req, res) => {
 
 
 // Middlewares
+function uploadPoster(req, res, next) {
+    var form = new formidable.IncomingForm();
+    var posterPath;
+    form.on('error', (err) => {
+        console.log(err)
+    });
+    form.parse(req, (err, fields, files) => {
+        if (err) throw err;
+        req.body = fields;
+    });
+
+    form.on('fileBegin', function (name, file) {
+        let dir_path = path.dirname(require.main.filename)
+        let newImageName = file.name.split('.')[0] + '.' + file.name.split('.').pop();
+        posterPath = dir_path + '/public/posters/' + Date.now() + newImageName;
+        file.path = posterPath;
+        posterPath = 'public/posters/' + Date.now() + newImageName;
+
+    });
+
+    form.on('file', function (name, file) {
+        req.body.poster_url = posterPath;
+        console.log('Uploaded ' + file.name);
+    });
+
+    form.on('end', () => {
+        req.body.poster_url = posterPath;
+        next();
+    });
+}
 function verifyAdminToken(req, res, next) {
     const bearerHeader = req.headers["authorization"];
 

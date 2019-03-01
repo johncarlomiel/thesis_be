@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const mysql = require("mysql")
 const cors = require('cors');
 const chalk = require('chalk');
-
+const path = require('path')
 const bcrypt = require('bcrypt');
 
 
@@ -13,17 +13,9 @@ const app = express();
 
 
 
-
-
-// var uniqid = require('uniqid');
-// path = require('path')
-// var fs = require('fs')
-
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }))
-// app.use(express.static('./'))
-app.use(express.static(__dirname + '/public'));
+app.use("/public", express.static(path.join(__dirname + '/public')))
 
 var server = app.listen(5000, () => {
     console.log("Server started at port 5000")
