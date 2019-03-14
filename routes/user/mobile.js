@@ -4,11 +4,12 @@ const pool = require('../../configs/pool');
 const jwt = require('jsonwebtoken');
 const formidable = require('formidable');
 const cors = require('cors');
+const config = require('../../configs/config')
 
 router.use(express.json());
 router.use(cors());
-const server_ip = "http://192.168.100.2:5000/";
 //Mobile App Routes
+const server_ip = config.ip;
 
 router.get('/events', verifyToken, (req, res) => {
     pool.getConnection((err, connection) => {
@@ -61,7 +62,7 @@ router.get("/getEform", verifyToken, (req, res) => {
                 res.status(200).json({ hasEform: false, url: "" })
             } else {
 
-                res.status(200).json({ url: "http://192.168.100.3:5000/" + results[0].eform_path, hasEform: true })
+                res.status(200).json({ url: server_ip + results[0].eform_path, hasEform: true })
             }
         });
     })
@@ -283,7 +284,7 @@ function verifyToken(req, res, next) {
 
         req.token = bearer;
 
-        jwt.verify(bearer, 'shhhhhh', (err, authData) => {
+        jwt.verify(bearer, config.secret_user, (err, authData) => {
             if (err) {
                 res.status(403).json({ message: "Forbidden" })
                 throw err

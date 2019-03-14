@@ -5,6 +5,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const uniqid = require('uniqid');
+const config = require('../configs/config');
+
 
 
 router.use(express.json());
@@ -29,7 +31,7 @@ router.post("/users/login", (req, res) => {
                             name: results[0].name,
                             dp_path: results[0].dp_path
                         }
-                        jwt.sign(payload, "shhhhhh", { expiresIn: '1d' }, (err, token) => {
+                        jwt.sign(payload, config.secret_user, { expiresIn: '1d' }, (err, token) => {
                             if (err) throw err;
                             res.json(token);
                         });
@@ -144,7 +146,7 @@ router.post("/admin/login", (req, res) => {
                         name: results[0].name,
                         dp_path: results[0].dp_path
                     }
-                    jwt.sign(payload, "adminsecretshhhhhh", { expiresIn: '1d' }, (err, token) => {
+                    jwt.sign(payload, config.secret_admin, { expiresIn: '1d' }, (err, token) => {
                         if (err) throw err;
 
 
@@ -176,7 +178,7 @@ function verifyToken(req, res, next) {
 
         req.token = bearer;
 
-        jwt.verify(bearer, 'shhhhhh', (err, authData) => {
+        jwt.verify(bearer, config.secret_user, (err, authData) => {
             if (err) {
                 res.status(403).json({ message: "Forbidden" })
                 throw err
@@ -201,9 +203,9 @@ router.get('/payload', (req, res) => {
         req.token = bearer;
         let secret = "";
         if (req.query.user_type == "admin") {
-            secret = "adminsecretshhhhhh";
+            secret = config.secret_admin;
         } else {
-            secret = "shhhhhh"
+            secret = config.secret_user;
         }
 
         jwt.verify(bearer, secret, (err, authData) => {

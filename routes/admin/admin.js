@@ -3,12 +3,13 @@ const router = express.Router();
 const pool = require('../../configs/pool');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const config = require('../../configs/config');
 
 var path = require('path');
 var formidable = require('formidable')
 router.use(express.json());
 router.use(cors());
-const server_url = "http://192.168.100.5:5000/";
+const server_url = config.ip;
 
 function uploadUpdatePoster(req, res, next) {
 
@@ -254,7 +255,7 @@ router.get('/getEform', verifyAdminToken, (req, res) => {
                 res.status(200).json({ hasEform: false, url: "" })
             } else {
 
-                res.status(200).json({ url: "http://192.168.100.5:5000/" + results[0].eform_path, hasEform: true })
+                res.status(200).json({ url: server_url + results[0].eform_path, hasEform: true })
             }
         });
 
@@ -526,7 +527,7 @@ function verifyAdminToken(req, res, next) {
 
         req.token = bearer;
 
-        jwt.verify(bearer, 'adminsecretshhhhhh', (err, authData) => {
+        jwt.verify(bearer, config.secret_user, (err, authData) => {
             if (err) {
                 res.status(403).json({ message: "Forbidden" })
                 throw err

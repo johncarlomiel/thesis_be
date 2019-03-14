@@ -3,6 +3,8 @@ const router = express.Router();
 const pool = require('../../configs/pool');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const config = require('../../configs/config');
+
 
 router.use(express.json());
 router.use(cors());
@@ -177,7 +179,7 @@ function verifyToken(req, res, next) {
 
         req.token = bearer;
 
-        jwt.verify(bearer, 'shhhhhh', (err, authData) => {
+        jwt.verify(bearer, config.secret_user, (err, authData) => {
             if (err) {
                 res.status(403).json({ message: "Forbidden" })
                 throw err
