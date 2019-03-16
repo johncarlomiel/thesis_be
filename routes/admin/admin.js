@@ -527,7 +527,7 @@ function verifyAdminToken(req, res, next) {
 
         req.token = bearer;
 
-        jwt.verify(bearer, config.secret_user, (err, authData) => {
+        jwt.verify(bearer, config.secret_admin, (err, authData) => {
             if (err) {
                 res.status(403).json({ message: "Forbidden" })
                 throw err

@@ -1,5 +1,5 @@
 module.exports = {
-    ip: "http://192.168.100.4:5000/",
+    ip: "https://gordoncollegesds.herokuapp.com/",
     secret_admin: "adminsecretshhhhhh",
     secret_user: "shhhhhh"
 }
