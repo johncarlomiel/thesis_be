@@ -19,7 +19,7 @@ app.use("/public", express.static(path.join(__dirname + '/public')))
 
 
 //For testing purposes
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT || 8080
 var server = app.listen(PORT, () => {
     console.log("Server started at port 5000");
 });
