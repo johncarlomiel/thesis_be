@@ -62,7 +62,8 @@ router.get("/getEform", verifyToken, (req, res) => {
                 res.status(200).json({ hasEform: false, url: "" })
             } else {
 
-                res.status(200).json({ url: server_ip + results[0].eform_path, hasEform: true })
+                res.status(200).json({ url: server_ip + results[0].eform_path, hasEform: true });
+                console.log(server_ip + results[0].eform_path)
             }
         });
     })
