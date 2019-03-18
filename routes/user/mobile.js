@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const formidable = require('formidable');
 const cors = require('cors');
 const config = require('../../configs/config')
+const path = require('path');
+
 
 router.use(express.json());
 router.use(cors());
@@ -261,7 +263,7 @@ function uploadPhoto(req, res, next) {
     form.on('fileBegin', function (name, file) {
         console.log(file)
         let newImageName = req.userData.id + '.' + file.name.split('.').pop();
-        profilePath = __dirname + '/public/uploads/' + Date.now() + newImageName;
+        profilePath = path.join(__dirname, '..', '..', 'public/uploads/') + Date.now() + newImageName;
         file.path = profilePath;
         profilePath = 'public/uploads/' + Date.now() + newImageName;
 
