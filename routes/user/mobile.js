@@ -6,6 +6,8 @@ const formidable = require('formidable');
 const cors = require('cors');
 const config = require('../../configs/config')
 const path = require('path');
+const fs = require('fs');
+
 
 
 router.use(express.json());
