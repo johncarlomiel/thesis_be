@@ -233,10 +233,18 @@ function deleteCurrentPhoto(req, res, next) {
             // When done with the connection, release it.
             connection.release();
             if (results[0].eform_path != "") {
-                fs.unlink(results[0].eform_path, (err) => {
-                    if (err) throw err;
-                    console.log(results[0].eform_path + " Deleted");
-                });
+                fs.access(results[0].eform_path, (err) => {
+                    if (err) {
+                        console.log(err)
+                    } else {
+                        fs.unlink(results[0].eform_path, (err) => {
+                            if (err) throw err;
+                            console.log(results[0].eform_path + " Deleted");
+                        });
+                    }
+
+                })
+
             } else {
                 console.log("empty")
 
