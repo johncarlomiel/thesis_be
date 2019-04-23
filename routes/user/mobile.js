@@ -269,9 +269,9 @@ function uploadPhoto(req, res, next) {
     form.on('fileBegin', function (name, file) {
         console.log(file)
         let newImageName = req.userData.id + '.' + file.name.split('.').pop();
-        profilePath = path.join(__dirname, '..', '..', 'public/uploads/') + Date.now() + "qwe" + newImageName;
+        profilePath = path.join(__dirname, '..', '..', 'public/uploads/') + Date.now() + newImageName;
         file.path = profilePath;
-        // profilePath = 'public/uploads/' + Date.now() + newImageName;
+        profilePath = 'public/uploads/' + Date.now() + newImageName;
 
     });
 
