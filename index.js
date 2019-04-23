@@ -29,7 +29,8 @@ const PORT = process.env.PORT || 8080
 var server = app.listen(PORT, () => {
    console.log("Server started at port 8080")
 });
-var io = require('socket.io').listen(server);
+var io = require('socket.io')(server, { origins: '*:*' }).listen(server);
+
 
 //Routes
 const authRoutes = require('./routes/auth');
