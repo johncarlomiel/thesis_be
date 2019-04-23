@@ -56,7 +56,6 @@ function verifyToken(req, res, next) {
 module.exports = function (io) {
     var users = [];
     var clients = io.sockets.clients();
-    io.set('origins', '*:*');
     var notif = io.of('/chat')
         .on('connection', (socket) => {
             socket.on('error', (error) => console.log(error))
