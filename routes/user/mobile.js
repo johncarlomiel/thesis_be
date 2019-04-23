@@ -62,13 +62,14 @@ router.get("/getEform", verifyToken, (req, res) => {
             }
             // When done with the connection, release it.
             console.log(results[0])
+            console.log(server_ip + results[0].eform_path)
             connection.release();
             if (results[0].eform_path == "") {
                 res.status(200).json({ hasEform: false, url: "" })
             } else {
 
                 res.status(200).json({ url: server_ip + results[0].eform_path, hasEform: true });
-                console.log(server_ip + results[0].eform_path)
+
             }
         });
     })
