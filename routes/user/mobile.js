@@ -256,7 +256,7 @@ function uploadPhoto(req, res, next) {
     var form = new formidable.IncomingForm();
     var profilePath;
     form.on('error', (err) => {
-        console.log(err)
+        throw err;
     });
     form.parse(req, (err, fields, files) => {
         console.log(req)
@@ -268,7 +268,7 @@ function uploadPhoto(req, res, next) {
     form.on('fileBegin', function (name, file) {
         console.log(file)
         let newImageName = req.userData.id + '.' + file.name.split('.').pop();
-        profilePath = path.join(__dirname, '..', '..', 'public/uploads/') + Date.now() + newImageName;
+        profilePath = path.join(__dirname, '..', '..', 'public/uploads/') + Date.now() + "qwe" + newImageName;
         file.path = profilePath;
         profilePath = 'public/uploads/' + Date.now() + newImageName;
 
