@@ -47,6 +47,7 @@ var server = app.listen(PORT, () => {
    console.log("Server started at port 8080")
 });
 var io = require('socket.io').listen(server);
+// var io = require('socket.io').listen(server, { log: false, origins: '*:*' });
 
 
 //Routes

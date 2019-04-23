@@ -27,6 +27,7 @@ router.get('/invitation', verifyToken, (req, res) => {
 router.patch('/invitation', verifyToken, (req, res) => {
    console.log("got something")
    pool.getConnection((err, connection) => {
+      if (err) throw err;
       let sql = connection.query('UPDATE invitation SET status = ?, isSeen = true WHERE user_id = ? AND event_id = ?', [req.body.status_val, req.userData.id, req.body.event_id], (err, results) => {
          if (err) throw err;
          connection.release();
