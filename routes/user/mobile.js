@@ -61,6 +61,7 @@ router.get("/getEform", verifyToken, (req, res) => {
                 throw error;
             }
             // When done with the connection, release it.
+            console.log(results[0])
             connection.release();
             if (results[0].eform_path == "") {
                 res.status(200).json({ hasEform: false, url: "" })
