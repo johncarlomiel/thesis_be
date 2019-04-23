@@ -21,7 +21,7 @@ app.use("/public", express.static(path.join(__dirname + '/public')))
 //For testing purposes
 const PORT = process.env.PORT || 8080
 var server = app.listen(PORT, () => {
-    console.log("Server started at port 5000");
+   console.log("Server started at port 5000");
 });
 
 // For deployment
@@ -38,6 +38,8 @@ const chatRoutes = require('./routes/user/chat')(io);
 const webRoutes = require('./routes/user/web');
 const admin = require('./routes/admin/admin');
 const adminGraph = require('./routes/admin/graph');
+const invitation = require('./routes/user/invitation');
+
 app.use((req, res, next) => { res.locals["socketio"] = io; next(); });
 
 app.use('/auth', authRoutes);
@@ -45,6 +47,7 @@ app.use('/auth', authRoutes);
 app.use('/user', mobileRoutes);
 app.use('/user', webRoutes);
 app.use('/user', chatRoutes);
+app.use('/user', invitation);
 
 app.use('/admin', admin);
 app.use('/admin', adminGraph);

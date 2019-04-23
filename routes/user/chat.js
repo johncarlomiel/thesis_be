@@ -1,6 +1,3 @@
-
-
-
 const express = require("express");
 const router = express.Router();
 const pool = require('../../configs/pool');
@@ -75,6 +72,27 @@ module.exports = function (io) {
                 }
             });
 
+
+            socket.on('invitation to an event', (students, invitation) => {
+                pool.query("INSERT INTO invitation (event_id, user_id) VALUES ?", [invitation], (err, results) => {
+                    if (err) throw err;
+                    students.forEach((element) => {
+                        if (!!users[element.id]) {
+                            pool.query('SELECT * FROM invitation INNER JOIN events ON invitation.event_id = events.event_id WHERE isSeen = false AND user_id = ?', [element.id], (err, results) => {
+                                if (err) throw err;
+                                notif.to(users[element.id]).emit('new invitation', results);
+                            });
+                        } else {
+                            console.log("OFFLINE")
+                        }
+                    });
+                });
+
+            });
+
+
+
+
             socket.on('login', id => {
                 if (!!id) {
                     console.log(id);
@@ -85,13 +103,14 @@ module.exports = function (io) {
                     socket.broadcast.emit('new online user', id);
                 }
             });
-            socket.on('logout', id => {
-                console.log('logout id : ' + id)
-                if (id !== 'undefined') {
-                    delete users[id];
+            socket.on('logout', (data) => {
+                console.log('logout id : ' + data.id)
+                socket.leave(data.convo_name)
+                if (!!data.id) {
+                    delete users[data.id];
                     let currentDate = new Date();
-                    socket.broadcast.emit('new offline user', id, currentDate);
-                    pool.query(`UPDATE users SET last_online = '${currentDate}' WHERE id = ${id}`, (err, results) => {
+                    socket.broadcast.emit('new offline user', data.id, currentDate);
+                    pool.query(`UPDATE users SET last_online = '${currentDate}' WHERE id = ${data.id}`, (err, results) => {
                         if (err) throw err;
 
                     });
@@ -126,6 +145,8 @@ module.exports = function (io) {
 
             socket.on('send msg', (data) => {
                 const bearer = data.token.split(" ")[1];
+                console.log(data);
+
                 let secret_key = "";
                 if (data.isAdmin)
                     secret_key = config.secret_admin;
@@ -150,7 +171,27 @@ module.exports = function (io) {
                                     if (err) throw err;
                                     notif.to(convo_name).emit('new msg', results);
                                     notif.to(convo_name).emit('new single message for contact', results[0]);
-                                })
+                                });
+
+                                let sql2 = `SELECT convo_name,isSeen, id, message,dp_path,
+                             message_id, messages.timestamp, name
+                             FROM messages INNER JOIN users ON messages.user_id = users.id
+                              WHERE convo_name = ? AND user_id = ? AND isSeen = false ORDER BY messages.timestamp DESC LIMIT ?`;
+
+
+                                pool.getConnection((err, connection) => {
+                                    let query = connection.query(sql2, [convo_name, authData.id, data.limit], (err, results) => {
+                                        if (err) throw err;
+                                        socket.to(convo_name).emit('new message notif', results);
+
+                                        connection.release();
+                                    });
+                                    console.log(query.sql)
+                                });
+
+
+
+
 
 
 
@@ -181,6 +222,16 @@ module.exports = function (io) {
         return newContacts;
     }
 
+    //Seen all messages
+    router.post("/seen", verifyToken, (req, res) => {
+        let sql = `UPDATE messages SET isSeen = true WHERE user_id = ? AND convo_name = ?`;
+        pool.query(sql, [req.body.contact_user_id, req.body.convo_name], (err, results) => {
+            if (err) throw err;
+            console.log(results);
+        });
+
+    });
+
 
     //Get Contacts
     router.get("/contacts", verifyToken, (req, res) => {
@@ -196,6 +247,15 @@ module.exports = function (io) {
         let query = pool.query(sql, [req.userData.id], (error, results) => {
             if (error) throw error;
             res.json(checkOnline(results));
+        });
+    });
+
+    router.get("/new-messages", verifyToken, (req, res) => {
+        let sql = "SELECT messages.message, users.name AS person FROM messages INNER JOIN users ON messages.user_id = users.id WHERE messages.user_id = ? AND messages.convo_name = ? AND isSeen = false";
+        pool.query(sql, [req.query.user_id, req.query.convo_name], (error, results) => {
+            if (error) throw error;
+            res.json(results);
+
         });
     });
 

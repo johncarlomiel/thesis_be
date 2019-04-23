@@ -164,24 +164,19 @@ router.put('/updateMoreInfo', verifyToken, (req, res) => {
 });
 
 router.put('/updateProblems', verifyToken, (req, res) => {
-    let holder = Array.apply(null, Array());
-    let fieldnameArr = Array.apply(null, Array());
-    let valuesArr = Array.apply(null, Array())
-    req.body.data.forEach(element => {
-        element.questions.forEach(element => {
-            holder.push(element)
-            fieldnameArr.push(element.fieldname + " = ?");
-            valuesArr.push(element.value)
-        });
-    });
+
     pool.getConnection((err, connection) => {
         if (err) throw err;
-        let query = connection.query(`UPDATE reserve SET ${fieldnameArr.toString()} WHERE user_id = ${req.userData.id}`, valuesArr, (error, results, fields) => {
+        let query = connection.query(`UPDATE reserve SET ${req.body.fieldnameArr.toString()} WHERE user_id = ${req.userData.id}`, req.body.valuesArr, (error, results, fields) => {
             if (error) throw error;
             // When done with the connection, release it.
-            connection.release();
-            updateProgress("problems");
-            res.status(200).json({ status: 200, message: "Success!" });
+            connection.query(`UPDATE users SET isProblemsUpdated = true WHERE id = ${req.userData.id}`, (err, results) => {
+                if (err) throw err;
+                connection.release();
+                updateProgress("problems");
+                res.status(200).json({ status: 200, message: "Success!" });
+            })
+
 
         });
     });

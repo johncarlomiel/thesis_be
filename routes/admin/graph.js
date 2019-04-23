@@ -14,57 +14,21 @@ router.post("/graph", verifyAdminToken, async (req, res) => {
         notCondition: { value: 0, data: Array.apply(null, Array()), label: "Only Criteria" },
         allResult: { value: 0, data: Array.apply(null, Array()), label: "All Students" },
     }
-
-    let criteria_holder = "";
-    let criteriaMet = "";
-    let notCriteriaMet = "";
-
-    //Get result 1
-    //Get Criteria
-    req.body.criteria.forEach((first, firstIndex) => {
-        notCriteriaMet += "(";
-        criteriaMet += "(";
-        first.value.forEach((element, index) => {
-            notCriteriaMet += "users." + first.fieldname + " = " + `'${element}'`;
-            criteriaMet += "users." + first.fieldname + " = " + `'${element}'`;
-            if (index != first.value.length - 1) {
-                notCriteriaMet += " OR "
-                criteriaMet += " OR "
-            }
-        });
-        notCriteriaMet += ")";
-        notCriteriaMet += " AND "
-        criteriaMet += ")"
-        criteriaMet += " AND "
-        console.log("done first event")
-    });
-
-    req.body.value.forEach((element, index) => {
-        console.log("second start")
-        notCriteriaMet += element + " = 0";
-        criteriaMet += element + " = 1";
-        if (index != req.body.value.length - 1) {
-            criteriaMet += " AND "
-            notCriteriaMet += " AND "
-        }
-        console.log("second end")
-    });
-    console.log(criteriaMet)
     pool.getConnection((err, connection) => {
         console.log("third start")
         if (err) throw err;
-        let query = connection.query(`SELECT * FROM users INNER JOIN reserve ON users.id = reserve.user_id WHERE ${criteriaMet}`, (error, results, fields) => {
+        let query = connection.query(`SELECT * FROM users INNER JOIN reserve ON users.id = reserve.user_id WHERE ${req.body.criteriaMet} AND users.isProblemsUpdated = true AND users.type = 'user'`, (error, results, fields) => {
 
             if (error) throw error;
             result.conditionMet.value = results.length;
             result.conditionMet.data = results;
 
-            let query = connection.query(`SELECT * FROM users INNER JOIN reserve ON users.id = reserve.user_id WHERE ${notCriteriaMet}`, (error, results, fields) => {
+            let query = connection.query(`SELECT * FROM users INNER JOIN reserve ON users.id = reserve.user_id WHERE ${req.body.notCriteriaMet}  AND users.isProblemsUpdated = true AND users.type = 'user'`, (error, results, fields) => {
 
                 if (error) throw error;
                 result.notCondition.value = results.length;
                 result.notCondition.data = results;
-                let query = connection.query(`SELECT * FROM users`, (error, results, fields) => {
+                let query = connection.query(`SELECT * FROM users WHERE users.type = 'user'`, (error, results, fields) => {
                     if (error) throw error;
                     // When done with the connection, release it.
                     connection.release();
@@ -77,8 +41,6 @@ router.post("/graph", verifyAdminToken, async (req, res) => {
             })
 
         })
-
-        console.log("third end")
     })
     //Get result 2
 
@@ -87,16 +49,14 @@ router.post("/graph", verifyAdminToken, async (req, res) => {
 router.post("/genGraph", verifyAdminToken, (req, res) => {
     req.body.sqlTable = replaceAll(req.body.sqlTable, "\n", ",");
 
-    // console.log(req.body.sql)
     pool.getConnection((err, connection) => {
         if (err) throw err;
-        let query = connection.query(`SELECT ${req.body.sqlTable} FROM users INNER JOIN reserve ON users.id = reserve.user_id WHERE ${req.body.sql}`, (error, results, fields) => {
+        let query = connection.query(`SELECT ${req.body.sqlTable} FROM users INNER JOIN reserve ON users.id = reserve.user_id WHERE ${req.body.sql} AND users.isProblemsUpdated = true AND users.type = 'user'`, (error, results, fields) => {
             if (error) throw error;
             // When done with the connection, release it.
             connection.release();
             res.json(results)
         })
-        console.log(query.sql)
     })
 });
 

@@ -64,6 +64,14 @@ router.put('/events', verifyAdminToken, uploadUpdatePoster, (req, res) => {
     });
     console.log(query.sql)
 });
+
+
+router.get('/invitation/:eventId', verifyAdminToken, (req, res) => {
+    pool.query('SELECT DISTINCT invitation.event_id,invitation.user_id, users.* FROM invitation INNER JOIN users ON invitation.user_id = users.id WHERE event_id = ?', [req.params.eventId], (err, results) => {
+        if (err) throw err;
+        res.json(results);
+    });
+});
 router.delete('/events', verifyAdminToken, (req, res) => {
     let query = pool.query('DELETE FROM events WHERE event_id = ?', [req.query.id], (err, results) => {
         if (err) {
@@ -477,7 +485,7 @@ router.post("/indivProb", verifyAdminToken, (req, res) => {
     // console.log(req.body.problem)
     pool.getConnection((err, connection) => {
         if (err) throw err;
-        let query = connection.query(`SELECT username, name, year, course, gender FROM users INNER JOIN reserve ON users.id = reserve.user_id WHERE ${req.body.problem} AND ${req.body.userCriteria}`, (error, results, fields) => {
+        let query = connection.query(`SELECT username, name, year, course, gender,users.id FROM users INNER JOIN reserve ON users.id = reserve.user_id WHERE ${req.body.problem} AND ${req.body.userCriteria}`, (error, results, fields) => {
             if (error) throw error;
             // When done with the connection, release it.
             connection.release();

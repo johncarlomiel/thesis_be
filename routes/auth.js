@@ -14,7 +14,7 @@ router.use(cors());
 
 //User Login
 router.post("/users/login", (req, res) => {
-    console.log("meron")
+    console.log(req.body)
     pool.getConnection((err, connection) => {
         if (err) throw err;
         connection.query("SELECT * FROM `users` WHERE `username` = ?",
