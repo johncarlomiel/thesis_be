@@ -58,6 +58,9 @@ const webRoutes = require('./routes/user/web');
 const admin = require('./routes/admin/admin');
 const adminGraph = require('./routes/admin/graph');
 const invitation = require('./routes/user/invitation');
+const likesRoutes = require('./routes/user/like')(io);
+const commentsRoutes = require('./routes/user/comment')(io);
+
 
 app.use((req, res, next) => { res.locals["socketio"] = io; next(); });
 
@@ -65,7 +68,10 @@ app.use('/auth', authRoutes);
 
 app.use('/user', mobileRoutes);
 app.use('/user', webRoutes);
+
 app.use('/user', chatRoutes);
+app.use('/user', likesRoutes);
+app.use('/user', commentsRoutes);
 app.use('/user', invitation);
 
 app.use('/admin', admin);

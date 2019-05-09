@@ -18,16 +18,37 @@ const server_ip = config.ip;
 router.get('/events', verifyToken, (req, res) => {
     pool.getConnection((err, connection) => {
         if (err) throw err;
-        let query = connection.query(`SELECT * FROM events`, (err, results) => {
+
+        let query = connection.query(`SELECT events.* FROM events`, (err, results) => {
             if (err) {
                 res.status(400).json({ message: "Mysql Error" });
                 throw err;
             }
+
+
             results.forEach((element, index) => {
                 results[index].poster_url = server_ip + element.poster_url;
+
+                let sql = connection.query('SELECT * FROM event_likes WHERE event_id = ? AND user_id = ?', [element.event_id, req.userData.id], (err, results3) => {
+                    if (err) throw err;
+                    results[index]["user_id"] = "null";
+                    if (results3.length > 0) {
+                        results[index]["user_id"] = results3[0].user_id
+                    }
+                    connection.query('SELECT event_comments.comment, event_comments.comment_id, event_comments.timestamp,users.name,users.dp_path,users.id,event_comments.user_id FROM event_comments INNER JOIN users ON event_comments.user_id = users.id WHERE event_id = ? ORDER BY event_comments.timestamp ASC', [element.event_id], (err, results2) => {
+                        if (err) throw err;
+                        results[index]["comments"] = results2;
+
+                    });
+
+                });
+                console.log(sql.query)
+
             });
             connection.release();
-            res.json(results)
+            setTimeout(() => {
+                res.json(results);
+            }, 100);
         });
     });
 });

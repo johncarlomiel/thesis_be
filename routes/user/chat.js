@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const formidable = require('formidable');
 const cors = require('cors');
 const config = require('../../configs/config');
-
+var global = require('../../globals/global');
 
 router.use(express.json());
 router.use(cors());
@@ -54,7 +54,7 @@ function verifyToken(req, res, next) {
 
 
 module.exports = function (io) {
-    var users = [];
+    var users = global.users;
     var clients = io.sockets.clients();
     var notif = io.of('/chat')
         .on('connection', (socket) => {
@@ -227,7 +227,7 @@ module.exports = function (io) {
         let sql = `UPDATE messages SET isSeen = true WHERE user_id = ? AND convo_name = ?`;
         pool.query(sql, [req.body.contact_user_id, req.body.convo_name], (err, results) => {
             if (err) throw err;
-            console.log(results);
+            res.json(results)
         });
 
     });
