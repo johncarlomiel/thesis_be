@@ -56,6 +56,13 @@ router.patch('/users/permission', [verifyAdminToken], (req, res) => {
     });
 });
 
+router.get('/users/attendance', [verifyAdminToken], (req, res) => {
+    pool.query('SELECT users.name,users.summary_code,gender FROM users WHERE DATE(timestamp) = ? AND type= "user"', [req.query.date], (err, results) => {
+        if (err) res.json(err);
+        res.json(results);
+    });
+});
+
 router.put('/events', verifyAdminToken, uploadUpdatePoster, (req, res) => {
     let field_name = req.query.field_name;
     console.log(req.body)
