@@ -1,5 +1,5 @@
 
-//For testing purposes
+// For testing purposes
 // module.exports = {
 //     ip: "http://192.168.100.2:8080/",
 //     secret_admin: "adminsecretshhhhhh",
