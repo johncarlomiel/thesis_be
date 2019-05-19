@@ -11,7 +11,7 @@
 <body>
 
 
-   <article class="card">
+   <article class="card" id="body" style="display:none;">
       <div class="thumb" id="photo"></div>
       <div class="infos">
          <h2 class="title" id="title"><span class="flag"></span></h2>
@@ -49,6 +49,7 @@
                   document.getElementById("date").innerHTML = myJson.date;
                   document.getElementById("time").innerHTML = myJson.time_from + " - " + myJson.time_to;
                   document.getElementById("description").innerHTML = myJson.description
+                  document.getElementById('body').style.display = "block"
                });
          }
       });

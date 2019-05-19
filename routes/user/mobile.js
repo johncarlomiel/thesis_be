@@ -38,17 +38,21 @@ router.get('/events', verifyToken, (req, res) => {
                     connection.query('SELECT event_comments.comment, event_comments.comment_id, event_comments.timestamp,users.name,users.dp_path,users.id,event_comments.user_id FROM event_comments INNER JOIN users ON event_comments.user_id = users.id WHERE event_id = ? ORDER BY event_comments.timestamp ASC', [element.event_id], (err, results2) => {
                         if (err) throw err;
                         results[index]["comments"] = results2;
+                        if (results.length - 1 === index) {
+                            callback();
+                        }
+
 
                     });
 
                 });
-                console.log(sql.query)
+
 
             });
             connection.release();
-            setTimeout(() => {
+            function callback() {
                 res.json(results);
-            }, 100);
+            }
         });
     });
 });
