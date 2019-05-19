@@ -9,6 +9,23 @@ const config = require('../../configs/config');
 router.use(express.json());
 router.use(cors());
 
+router.get('/event/:id', (req, res) => {
+    pool.query('SELECT * FROM events WHERE event_id = ?', [req.params.id], (err, results) => {
+        if (err) res.json(err);
+        if (results.length > 0) {
+            results[0].poster_url = config.ip + results[0].poster_url;
+            res.json(results[0]);
+        } else { res.json({ message: "No event with that id" }) }
+    });
+});
+
+router.get('/count-takers', (req, res) => {
+    pool.query('SELECT COUNT(*) as takers FROM users WHERE summary_code <> ""', (err, results) => {
+        if (err) res.json(err);
+        res.json(results);
+    });
+});
+
 router.get('/checkSdsStatus', verifyToken, (req, res) => {
     pool.getConnection((err, connection) => {
         if (err) {

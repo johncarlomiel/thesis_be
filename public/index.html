@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <meta http-equiv="X-UA-Compatible" content="ie=edge">
+   <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+
+
+   <article class="card">
+      <div class="thumb" id="photo"></div>
+      <div class="infos">
+         <h2 class="title" id="title"><span class="flag"></span></h2>
+         <h3 class="date" id="date">november 2 - 4</h3>
+         <h3 class="seats" id="time">seats remaining: 2</h3>
+         <p class="txt" id="description">
+            Join us for our Live Infinity Session in
+            beautiful New York City. This is a 3 day
+            intensive workshop where you'll learn
+            how to become a better version of...
+            Lorem ipsum dolor sit amet consectetur adipisicing elit. Laborum, adipisci.
+         </p>
+      </div>
+   </article>
+
+   <script>
+      document.addEventListener("DOMContentLoaded", () => {
+         const urlParams = new URLSearchParams(window.location.search);
+         const id = urlParams.get('id');
+         if (!!id) {
+
+
+            fetch('http://localhost:8080/user/event/' + id)
+               .then(function (response) {
+                  return response.json();
+               })
+               .then(function (myJson) {
+                  console.log(myJson)
+                  let photoStyle = document.getElementById("photo").style;
+                  photoStyle.background = `url('${myJson.poster_url}') no-repeat center center / cover`;
+                  photoStyle.width = "auto";
+                  photoStyle.height = "260px";
+                  photoStyle.borderRadius = "3px";
+                  document.getElementById("title").innerHTML = myJson.name;
+                  document.getElementById("date").innerHTML = myJson.date;
+                  document.getElementById("time").innerHTML = myJson.time_from + " - " + myJson.time_to;
+                  document.getElementById("description").innerHTML = myJson.description
+               });
+         }
+      });
+   </script>
+</body>
+
+</html>

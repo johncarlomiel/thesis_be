@@ -49,6 +49,13 @@ function uploadUpdatePoster(req, res, next) {
     });
 }
 
+router.patch('/users/permission', [verifyAdminToken], (req, res) => {
+    pool.query("UPDATE users SET isGrantedAccess = ? WHERE id = ?", [req.body.isGrantedAccess, req.body.user_id], (err, results) => {
+        if (err) res.json(err);
+        res.json(results);
+    });
+});
+
 router.put('/events', verifyAdminToken, uploadUpdatePoster, (req, res) => {
     let field_name = req.query.field_name;
     console.log(req.body)
@@ -109,7 +116,7 @@ router.post('/events', verifyAdminToken, uploadPoster, (req, res) => {
 router.get('/users', verifyAdminToken, (req, res) => {
     if (req.query.type == "user") {
         pool.getConnection((err, connection) => {
-            connection.query("SELECT id, username, name FROM users WHERE type='user'", (error, results, fields) => {
+            connection.query("SELECT id, username, name,isGrantedAccess FROM users WHERE type='user'", (error, results, fields) => {
                 // When done with the connection, release it.
                 connection.release();
                 res.status(200).json(results)

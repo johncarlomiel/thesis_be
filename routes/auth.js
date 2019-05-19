@@ -45,6 +45,37 @@ router.post("/users/login", (req, res) => {
     });
 });
 
+router.post("/users/mobile/login", (req, res) => {
+    pool.getConnection((err, connection) => {
+        if (err) throw err;
+        connection.query("SELECT * FROM `users` WHERE `username` = ? AND isGrantedAccess = true",
+            [req.body.username],
+            (error, results, fields) => {
+                if (error) throw error;
+                // When done with the connection, release it.
+                connection.release();
+                if (results.length > 0) {
+                    if (bcrypt.compareSync(req.body.password, results[0].password)) {
+                        let payload = {
+                            id: results[0].id,
+                            username: results[0].username,
+                            name: results[0].name,
+                            dp_path: results[0].dp_path
+                        }
+                        jwt.sign(payload, config.secret_user, { expiresIn: '1d' }, (err, token) => {
+                            if (err) throw err;
+                            res.json(token);
+                        });
+                    } else {
+                        res.status(401).json({ message: "Invalid username or password" })
+                    }
+                } else {
+                    res.status(401).json({ message: "Invalid username or password" })
+                }
+            });
+    });
+});
+
 
 //User Registration
 router.post("/users/register", (req, res) => {

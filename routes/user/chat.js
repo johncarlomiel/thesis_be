@@ -95,8 +95,6 @@ module.exports = function (io) {
 
             socket.on('login', id => {
                 if (!!id) {
-                    console.log(id);
-
                     users[id] = socket.id;
                     socket.user_id = id;
                     console.log("user id = " + users[id])

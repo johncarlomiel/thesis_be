@@ -21,7 +21,9 @@ module.exports = (io) => {
       .on('connection', (socket) => {
 
          socket.on('like', (event_id, user_id, status) => {
-
+            console.log("event_id", event_id)
+            console.log("user_id", user_id)
+            console.log("status", status)
             pool.getConnection((err, connection) => {
                if (err) throw err;
                let sqlUpdate = "";
