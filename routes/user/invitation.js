@@ -15,7 +15,7 @@ router.use(cors());
 const server_ip = config.ip;
 
 router.get('/invitation', verifyToken, (req, res) => {
-   pool.query('SELECT DISTINCT invitation.event_id,invitation.user_id, events.*, users.* FROM invitation INNER JOIN events ON invitation.event_id = events.event_id INNER JOIN users ON invitation.user_id = users.id WHERE user_id = ? AND status = ?', [req.userData.id, req.query.status], (err, results) => {
+   pool.query('SELECT DISTINCT invitation.event_id,invitation.user_id, events.*,users.name AS fullname, users.* FROM invitation INNER JOIN events ON invitation.event_id = events.event_id INNER JOIN users ON invitation.user_id = users.id WHERE user_id = ? AND status = ?', [req.userData.id, req.query.status], (err, results) => {
       if (err) throw err;
       results.forEach((element, index) => {
          results[index]["poster_url"] = config.ip + element.poster_url;
