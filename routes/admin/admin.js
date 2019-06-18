@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const config = require('../../configs/config');
 
+const uniqid = require('uniqid');
+
 var path = require('path');
 var formidable = require('formidable')
 router.use(express.json());
@@ -59,6 +61,16 @@ router.patch('/users/permission', [verifyAdminToken], (req, res) => {
 router.get('/users/attendance', [verifyAdminToken], (req, res) => {
     pool.query('SELECT users.name,users.summary_code,gender FROM users WHERE DATE(timestamp) = ? AND type= "user"', [req.query.date], (err, results) => {
         if (err) res.json(err);
+        res.json(results);
+    });
+});
+
+router.get('/events/search', [verifyAdminToken], (req, res) => {
+    pool.query(`SELECT * FROM events WHERE events.name LIKE '%${req.query.keyword}%'`, (err, results) => {
+        if (err) res.json(err);
+        results.forEach((element, index) => {
+            results[index].poster_url = server_url + element.poster_url;
+        });
         res.json(results);
     });
 });
@@ -144,12 +156,66 @@ router.put("/account", verifyAdminToken, (req, res) => {
     if (req.body.fieldname != "" && req.body.value != "" && req.body.id) {
         pool.getConnection((err, connection) => {
             if (err) throw err;
-            let query = connection.query(`UPDATE users SET ${req.body.fieldname} = ? WHERE id = ?`, [req.body.value, req.body.id], (error, results, fields) => {
+            let query = connection.query(`UPDATE users SET ${req.body.fieldname} = ? WHERE id = ?;DELETE FROM contacts WHERE user_id = ? OR contact_user_id = ?`, [req.body.value, req.body.id, req.body.id, req.body.id], (error, results2, fields) => {
                 if (error) throw error;
-                connection.release();
-                res.json({ message: "Success" });
+                if (err) res.json(err);
+                if (req.body.value == 'admin') {
+                    connection.query('SELECT * FROM users WHERE type = "user"', (err, results) => {
+                        if (err) res.json(err);
 
-            })
+                        console.log(results[0])
+                        if (results.length != 0) {
+                            results.forEach((element, index) => {
+                                let convo_name = uniqid();
+                                console.log(index, results.length - 1)
+                                let data = [
+                                    [req.body.id, element.id, convo_name],
+                                    [element.id, req.body.id, convo_name]
+                                ];
+                                connection.query('INSERT INTO contacts (user_id, contact_user_id, convo_name) VALUES ?', [data], (err, results10) => {
+                                    if (err) throw err;
+                                    console.log(index, results.length - 1)
+                                    if (index == results.length - 1) {
+                                        connection.release();
+                                        res.json(results10)
+                                    }
+
+                                });
+
+
+
+                            });
+                        }
+                    });
+                } else {
+                    connection.query('SELECT * FROM users WHERE type = "admin"', (err, results) => {
+                        if (err) res.json(err);
+                        if (results.length != 0) {
+                            results.forEach((element, index) => {
+                                console.log(index, results.length - 1)
+                                let convo_name = uniqid();
+
+                                let data = [
+                                    [req.body.id, element.id, convo_name],
+                                    [element.id, req.body.id, convo_name]
+                                ];
+                                connection.query('INSERT INTO contacts (user_id, contact_user_id, convo_name) VALUES ?', [data], (err, results10) => {
+                                    if (err) throw err;
+                                    if (index == results.length - 1) {
+                                        console.log("tapos na")
+                                        connection.release();
+                                        res.json(results10)
+                                    }
+                                });
+
+
+
+                            });
+                        }
+                    });
+                }
+
+            });
             console.log(query.sql)
         })
     }

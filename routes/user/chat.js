@@ -35,6 +35,7 @@ function verifyToken(req, res, next) {
             secret_key = config.secret_user;
         }
 
+
         jwt.verify(bearer, secret_key, (err, authData) => {
             if (err) {
                 res.status(403).json({ message: "Forbidden" })
@@ -83,7 +84,6 @@ module.exports = function (io) {
                                 notif.to(users[element.id]).emit('new invitation', results);
                             });
                         } else {
-                            console.log("OFFLINE")
                         }
                     });
                 });
@@ -135,8 +135,6 @@ module.exports = function (io) {
                     socket.broadcast.emit('new offline user', id, currentDate);
                     pool.query(`UPDATE users SET last_online = '${currentDate}' WHERE id = ${id}`, (err, results) => {
                         if (err) throw err;
-                        console.log(results)
-                        console.log('nagana')
                     });
                 }
             });
@@ -153,47 +151,63 @@ module.exports = function (io) {
                 jwt.verify(bearer, secret_key, (err, authData) => {
                     if (err) throw err;
                     else {
-                        pool.query("INSERT INTO messages SET ?",
-                            { message: data.msg, user_id: authData.id, convo_name: data.convo_name },
-                            (err, results) => {
-                                if (err) throw err;
-                                let convo_name = data.convo_name;
-                                let limit = data.limit;
+                        pool.query('SELECT * FROM contacts WHERE convo_name = ?', [data.convo_name], (err, results11) => {
+                            if (err) throw err;
+                            if (results11.length > 0) {
+                                pool.query("INSERT INTO messages SET ?",
+                                    { message: data.msg, user_id: authData.id, convo_name: data.convo_name },
+                                    (err, results) => {
+                                        if (err) {
+                                            process.exit(1);
+                                        };
+                                        let convo_name = data.convo_name;
+                                        let limit = data.limit;
+                                        let id = results.insertId;
 
-                                let sql = `SELECT convo_name, id, message,dp_path,
-                             message_id, messages.timestamp, name
-                             FROM messages INNER JOIN users ON messages.user_id = users.id
-                              WHERE convo_name = ? ORDER BY messages.timestamp DESC LIMIT ?`;
+                                        pool.query('SELECT convo_name,id,message,dp_path,message_id,messages.timestamp,name FROM messages INNER JOIN users ON messages.user_id = users.id WHERE messages.message_id = ?', [id], (err, results2) => {
+                                            if (err) res.json(err);
+                                            notif.to(convo_name).emit('new msg', results2[0]);
+                                            notif.to(convo_name).emit('new single message for contact', results2[0]);
+                                        });
 
-                                pool.query(sql, [convo_name, data.limit], (err, results) => {
-                                    if (err) throw err;
-                                    notif.to(convo_name).emit('new msg', results);
-                                    notif.to(convo_name).emit('new single message for contact', results[0]);
-                                });
+                                        //             let sql = `SELECT convo_name, id, message,dp_path,
+                                        //  message_id, messages.timestamp, name
+                                        //  FROM messages INNER JOIN users ON messages.user_id = users.id
+                                        //   WHERE convo_name = ? ORDER BY messages.timestamp DESC LIMIT ?`;
 
-                                let sql2 = `SELECT convo_name,isSeen, id, message,dp_path,
+                                        //             pool.query(sql, [convo_name, data.limit], (err, results) => {
+                                        //                 if (err) throw err;
+
+                                        //             });
+
+                                        let sql2 = `SELECT convo_name,isSeen, id, message,dp_path,
                              message_id, messages.timestamp, name
                              FROM messages INNER JOIN users ON messages.user_id = users.id
                               WHERE convo_name = ? AND user_id = ? AND isSeen = false ORDER BY messages.timestamp DESC LIMIT ?`;
 
 
-                                pool.getConnection((err, connection) => {
-                                    let query = connection.query(sql2, [convo_name, authData.id, data.limit], (err, results) => {
-                                        if (err) throw err;
-                                        socket.to(convo_name).emit('new message notif', results);
+                                        pool.getConnection((err, connection) => {
+                                            let query = connection.query(sql2, [convo_name, authData.id, data.limit], (err, results) => {
+                                                if (err) throw err;
+                                                connection.query("UPDATE contacts SET timestamp = ? WHERE convo_name = ?", [new Date().toISOString().slice(0, 19).replace('T', ' '), convo_name], (err, results2) => {
+                                                    if (err) throw err;
+                                                    socket.to(convo_name).emit('new message notif', results);
 
-                                        connection.release();
+                                                    connection.release();
+                                                });
+                                            });
+                                        });
+
+
+
+
+
+
+
                                     });
-                                    console.log(query.sql)
-                                });
+                            }
+                        });
 
-
-
-
-
-
-
-                            });
                     }
                 });
             });
@@ -214,7 +228,10 @@ module.exports = function (io) {
                 isOnline,
                 isSelected: false,
                 recent_msg: element.recent_msg,
-                last_online: element.last_online
+                last_online: element.last_online,
+                id: element.user_id,
+                isSeen: element.isSeen,
+                user_id: element.user_id
             });
         });
         return newContacts;
@@ -222,30 +239,79 @@ module.exports = function (io) {
 
     //Seen all messages
     router.post("/seen", verifyToken, (req, res) => {
-        let sql = `UPDATE messages SET isSeen = true WHERE user_id = ? AND convo_name = ?`;
-        pool.query(sql, [req.body.contact_user_id, req.body.convo_name], (err, results) => {
-            if (err) throw err;
-            res.json(results)
-        });
+
+        pool.getConnection((err, connection) => {
+            if (err) res.json(err);
+            let sql = `UPDATE messages SET isSeen = true WHERE user_id = ? AND convo_name = ?`;
+            let query = connection.query(sql, [req.body.contact_user_id, req.body.convo_name], (err, results) => {
+                if (err) throw err;
+                connection.release();
+                res.json(results)
+            });
+            console.log(query.sql)
+        })
 
     });
 
 
     //Get Contacts
-    router.get("/contacts", verifyToken, (req, res) => {
+
+    router.get("/contacts/search", verifyToken, (req, res) => {
         let sql = `SELECT contacts.*,users.*,
         SUBSTRING((SELECT messages.message FROM messages 
             WHERE contacts.convo_name = messages.convo_name 
-            ORDER BY messages.message_id DESC LIMIT 1),1,20) AS recent_msg
+            ORDER BY messages.message_id DESC LIMIT 1),1,20) AS recent_msg,
+            SUBSTRING((SELECT messages.isSeen FROM messages 
+                WHERE contacts.convo_name = messages.convo_name 
+                ORDER BY messages.message_id DESC LIMIT 1),1,20) AS isSeen,
+                SUBSTRING((SELECT messages.user_id FROM messages 
+                    WHERE contacts.convo_name = messages.convo_name 
+                    ORDER BY messages.message_id DESC LIMIT 1),1,20) AS user_id
          FROM contacts
-        INNER JOIN users ON contacts.contact_user_id = users.id
-          WHERE contacts.user_id = ?`;
+        INNER JOIN users ON contacts.contact_user_id = users.id  
+          WHERE contacts.user_id = ? AND users.name LIKE '%${req.query.keyword}%' ORDER BY contacts.timestamp DESC  LIMIT ${req.query.limit} `;
+
+        pool.getConnection((err, connection) => {
+            if (err) res.json(err);
+            let query = connection.query(sql, [req.userData.id], (err, results) => {
+                if (err) res.json(err);
+                connection.release();
+                res.json(results);
+            });
+            console.log(query.sql);
+        })
 
 
-        let query = pool.query(sql, [req.userData.id], (error, results) => {
-            if (error) throw error;
-            res.json(checkOnline(results));
-        });
+    })
+    router.get("/contacts", verifyToken, (req, res) => {
+        let limit_sql = "";
+        if (req.query.limit == 0) {
+            limit_sql = "";
+        } else {
+            limit_sql = `LIMIT ${req.query.limit}`;
+        }
+        let sql = `SELECT contacts.*,users.*,
+        SUBSTRING((SELECT messages.message FROM messages 
+            WHERE contacts.convo_name = messages.convo_name 
+            ORDER BY messages.message_id DESC LIMIT 1),1,20) AS recent_msg,
+            SUBSTRING((SELECT messages.isSeen FROM messages 
+                WHERE contacts.convo_name = messages.convo_name 
+                ORDER BY messages.message_id DESC LIMIT 1),1,20) AS isSeen,
+                SUBSTRING((SELECT messages.user_id FROM messages 
+                    WHERE contacts.convo_name = messages.convo_name 
+                    ORDER BY messages.message_id DESC LIMIT 1),1,20) AS user_id
+         FROM contacts
+        INNER JOIN users ON contacts.contact_user_id = users.id  
+          WHERE contacts.user_id = ? ORDER BY contacts.timestamp DESC  ${limit_sql} `;
+
+        pool.getConnection((err, connection) => {
+            if (err) throw res.json(err);
+            let query = connection.query(sql, [req.userData.id], (error, results) => {
+                if (error) throw error;
+                connection.release();
+                res.json(checkOnline(results));
+            });
+        })
     });
 
     router.get("/new-messages", verifyToken, (req, res) => {
@@ -263,7 +329,6 @@ module.exports = function (io) {
           WHERE convo_name = ?  ORDER BY messages.message_id DESC LIMIT `;
         let qwe = pool.query(sql + req.query.limit, [req.query.convo_name], (err, results) => {
             if (err) throw err;
-            console.log(err);
             res.json(results);
         })
     });
@@ -280,7 +345,6 @@ module.exports = function (io) {
                 if (err) throw err;
 
                 notif.to(convo_name).emit('new msg', results.reverse());
-                console.log(convo_name)
                 res.status(200)
             });
         })
