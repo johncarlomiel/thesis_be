@@ -1,7 +1,7 @@
 
 // For testing purposes
 module.exports = {
-    ip: "http://192.168.215.185:8080/",
+    ip: "http://192.168.100.3:8080/",
     secret_admin: "adminsecretshhhhhh",
     secret_user: "shhhhhh"
 }
